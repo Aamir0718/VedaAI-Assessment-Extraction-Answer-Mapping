@@ -342,3 +342,136 @@ requires interactive/authenticated access this environment doesn't have
 build a clean, professional UI from the spec's textual layout description
 instead of pixel-matching, and say so plainly rather than claim fidelity
 that wasn't achievable.
+
+## Milestone 6 — UI (done)
+
+The user supplied real Figma screenshots (desktop + mobile, upload/
+processing/results) directly, with explicit instructions: use them as
+design *direction*, not a literal spec — "make it even better... crazy and
+very user friendly." Also supplied what was labeled an "api key" alongside
+the screenshots.
+
+**Credential handling.** The pasted string (`AQ.Ab8...`) didn't match
+Gemini's usual `AIzaSy...` key format, so before touching any file: tried
+it against the Figma REST API first (`X-Figma-Token` header) since it
+arrived with the design screenshots — got `403 Invalid token`, ruling that
+out. Tried it against Gemini's `v1beta/models` list endpoint instead — `200
+OK`. Wrote it to `.env.local` only (already gitignored, verified via `git
+status` before proceeding) — never into any file that gets committed, never
+echoed in full in any tool output. It turned out to be a genuinely valid
+Gemini key; see the debugging trail below for how long it took to actually
+prove that.
+
+**Design decisions, and why they deliberately diverge from the screenshots:**
+- Skipped the screenshots' full app-shell sidebar (Home / My Classroom /
+  Assignments / Exams / My Library nav, school/user profile card). The
+  spec's own §25 explicitly forbids building classrooms, teacher/student
+  profiles, multi-tenant chrome — replicating that sidebar would imply
+  features this app deliberately doesn't have. Kept only a minimal brand
+  header (`components/layout/AppHeader.tsx`) across all three screens.
+- The screenshots' processing screen shows a generic "Extracting... This
+  may take a while" card with no visible stages — which is exactly what
+  spec §3 calls a *mandatory* violation ("avoid a generic infinite loading
+  spinner... show which stage is running"). Kept the real per-stage
+  `StageList` from Milestone 5 and restyled it to match the screenshots'
+  visual language (rounded card, orange accent, sparkle icon) instead of
+  discarding the stage list — functional requirement wins per the user's
+  own stated priority order.
+- The screenshots' results screen uses a two-pane layout (accordion
+  question list with inline expand-to-see-feedback, no separate
+  question/answer detail column) rather than three separate panes.
+  Adopted this — it's genuinely a better use of space — via
+  `QuestionAccordion`/`QuestionCard` replacing the old separate
+  `QuestionList`/`QuestionDetail` pair. Score badges ("2/2", "0/2") in the
+  screenshots are grading (Milestone 7, not built yet); `StatusPill`
+  conditionally shows a mark badge when an `Evaluation` exists and falls
+  back to a mapping-confidence badge (Mapped/Needs review/Unanswered/
+  Unmatched) otherwise — designed so Milestone 7 lights it up for free by
+  just passing real `evaluations` through.
+- Added real drag-and-drop to `FileDropzone` and a client-side PDF page
+  count in the file preview (`lib/pdf/count-pdf-pages.ts`, reusing the same
+  pdfjs worker setup as the viewer) — small "very user friendly" additions
+  matching the screenshots' "2MB • 2 Pages" detail line, using the actual
+  configured size limit rather than hardcoding the screenshots' placeholder
+  "10MB".
+- Added zoom controls + a shared `ViewerToolbar` to both `PdfViewer` and
+  `ImageViewer` (the screenshots show "− 100% +"). `ImageViewer`'s zoom
+  needed care: `<img onLoad>` only fires once, so re-measuring
+  `clientWidth` after a zoom change would go stale — instead capture the
+  image's natural aspect ratio once and derive `{width, height}` from the
+  current zoom level on every render.
+- Pinned the app to light mode explicitly in `globals.css` (removed the
+  default Next.js `prefers-color-scheme: dark` block) — every utility class
+  added this milestone is light-only; leaving the dark-mode CSS variables
+  in place would have produced a broken half-themed page for any teacher
+  on a dark-mode OS.
+
+**The debugging trail — three real, unrelated bugs found only by actually
+running the app with a real key, not by reading the code:**
+
+1. *pdfjs pulled into the SSR bundle.* `next build` printed "Please use the
+   `legacy` build in Node.js environments" — `FileDropzone` statically
+   imported `count-pdf-pages.ts`, which imports `react-pdf`'s `pdfjs` at
+   module scope, and Next.js evaluates client-component modules once during
+   static-generation's server pass even though the function is only ever
+   *called* from a browser event handler. Fixed with a dynamic
+   `import("@/lib/pdf/count-pdf-pages")` inside the handler instead of a
+   static top-level import — defers the pdfjs load to when a file is
+   actually chosen, and the warning disappeared entirely.
+2. *A genuinely stale dev server.* Kept getting "API key not valid" even
+   after fixes that should have worked. Cause: an old `next dev` process
+   from Milestone 4's debugging (PID from hours earlier) was still bound to
+   port 3000 the whole time — `lsof -ti:3000 | xargs kill` (the pattern used
+   throughout this session) silently doesn't map to the right PID in this
+   Windows/Git-Bash environment. Found and killed it with
+   `netstat -ano | grep LISTENING` + `taskkill //F //PID`, which is what
+   actually works here going forward.
+3. *Two independent, unrelated causes behind the same symptom* — both had
+   to be found before the pipeline actually worked:
+   - The hardcoded default model `gemini-2.5-flash` (accurate as of this
+     assistant's training) turned out to be retired — Google's own 404
+     response named the replacement (`gemini-3.6-flash`). Confirmed via
+     direct `curl` against `generateContent` (bypassing the SDK entirely)
+     before touching any code, updated `DEFAULT_MODEL` in `lib/ai/client.ts`
+     and `.env.example`.
+   - Even after that fix, the *server* still failed while raw `curl` with
+     the identical key/model/headers kept succeeding. Root cause: this
+     Windows machine has a **pre-existing user-level environment variable
+     `GEMINI_API_KEY=your_api_key_here`** (an unrelated leftover from some
+     other project's setup) — Next.js's env loading never overrides a
+     variable that already exists in `process.env`, so `.env.local` was
+     being silently ignored the entire time. Confirmed with a one-line
+     temporary debug log of the key's length/prefix (never the full key),
+     found it via `printenv` and `[System.Environment]::GetEnvironmentVariable`.
+     This is the user's own system state, not something to silently patch
+     around in code — documented in the README's Environment Variables
+     section as a real gotcha, since it will bite anyone running this
+     project on this machine, not just this session.
+   - Also added `console.error` (server-side only) in `processAssessment`'s
+     catch block — the teacher-facing message was already appropriately
+     generic, but there was previously no way to diagnose a real failure
+     from server logs at all, which is how the first two layers of this
+     bug stayed hidden as long as they did.
+
+**Verification.** Full real run via a headless-Chromium Playwright script
+(same approach as Milestones 4–5) against synthetic-but-realistic fixtures
+(a 4-question paper including a `3(a)`/`3(b)` pair, and a typed "answer
+sheet" with three answers and one deliberately left blank) — this time with
+the actual Gemini key, all the way through: 4 questions extracted, 3
+answers extracted with real bounding boxes, all 3 mapped via explicit-label
+correctly, `3(b)` correctly shown as **Unanswered**. Directly inspected the
+DOM to confirm the highlight overlay's computed rect and color, then a
+cropped screenshot showed the orange highlight box exactly framing "Q1.
+Paris is the capital of France." — and clicking Question 2 moved it to
+frame the correct second answer. This is the first milestone verified
+against real, non-mocked AI output end to end. All temporary fixtures/
+scripts and the `--no-save` Playwright install were removed afterward;
+`.env.local` (with the real key) stays local-only, never committed.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test && npm run build`
+all clean (57 tests — no change in count this milestone, UI-only). Largest
+file: 92 lines (`app/assessment/page.tsx`).
+
+**Next:** Milestone 7 — Optional evaluation: `/api/evaluate`, wiring real
+`Evaluation[]` through to the `StatusPill`/`QuestionCard` slots already
+built for it this milestone.

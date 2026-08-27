@@ -1,4 +1,6 @@
-type Props = { file: File; onRemove: () => void };
+import { FileText, X } from "lucide-react";
+
+type Props = { file: File; pageCount: number | null; onRemove: () => void };
 
 function formatSize(bytes: number): string {
   return bytes < 1024 * 1024
@@ -6,19 +8,25 @@ function formatSize(bytes: number): string {
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function FilePreviewCard({ file, onRemove }: Props) {
+export function FilePreviewCard({ file, pageCount, onRemove }: Props) {
+  const detail = pageCount ? `${formatSize(file.size)} • ${pageCount} page${pageCount === 1 ? "" : "s"}` : formatSize(file.size);
+
   return (
-    <div className="flex items-center justify-between rounded-md bg-neutral-50 px-3 py-2 text-sm">
-      <div className="truncate text-left">
-        <p className="truncate font-medium">{file.name}</p>
-        <p className="text-xs text-neutral-500">{formatSize(file.size)}</p>
+    <div className="group relative flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left shadow-sm">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+        <FileText className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-neutral-800">{file.name}</p>
+        <p className="text-xs text-neutral-500">{detail}</p>
       </div>
       <button
         type="button"
         onClick={onRemove}
-        className="ml-3 shrink-0 text-xs text-neutral-500 hover:text-red-600"
+        aria-label={`Remove ${file.name}`}
+        className="flex size-6 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition hover:bg-neutral-800 hover:text-white"
       >
-        Remove
+        <X className="size-3.5" aria-hidden />
       </button>
     </div>
   );

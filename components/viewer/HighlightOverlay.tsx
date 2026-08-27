@@ -12,7 +12,7 @@ export function HighlightOverlay({ regions, pageSize }: Props) {
         return (
           <div
             key={index}
-            className="absolute rounded-sm border-2 border-amber-400 bg-amber-300/30"
+            className="animate-highlight-in absolute rounded-md border-2 border-orange-500 bg-orange-400/20 shadow-[0_0_0_3px_rgba(249,115,22,0.15)]"
             style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
           />
         );

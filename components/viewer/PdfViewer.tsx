@@ -5,9 +5,15 @@ import { Document } from "react-pdf";
 import type { AnswerRegion } from "@/types/assessment";
 import { pagesForRegions, regionsByPage } from "@/lib/pdf/coordinates";
 import { PageCanvas } from "./PageCanvas";
-import "./pdf-worker-setup";
+import { ViewerToolbar } from "./ViewerToolbar";
+import "@/lib/pdf/pdf-worker-setup";
 
 type Props = { fileUrl: string; regions: AnswerRegion[] };
+
+const BASE_WIDTH = 640;
+const ZOOM_STEP = 0.15;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2;
 
 /**
  * Renders the answer-sheet PDF and, when the selected answer spans more
@@ -16,6 +22,7 @@ type Props = { fileUrl: string; regions: AnswerRegion[] };
 export function PdfViewer({ fileUrl, regions }: Props) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [regionIndex, setRegionIndex] = useState(0);
+  const [zoom, setZoom] = useState(1);
 
   const pages = useMemo(() => pagesForRegions(regions), [regions]);
   const byPage = useMemo(() => regionsByPage(regions), [regions]);
@@ -24,39 +31,24 @@ export function PdfViewer({ fileUrl, regions }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {pages.length > 1 && (
-        <div className="flex items-center gap-3 text-sm text-neutral-600">
-          <button
-            onClick={() => setRegionIndex((i) => Math.max(0, i - 1))}
-            disabled={regionIndex === 0}
-            className="rounded border px-2 py-1 disabled:opacity-40"
-          >
-            Previous region
-          </button>
-          <span>
-            Region {regionIndex + 1} of {pages.length} — page {currentPage}
-          </span>
-          <button
-            onClick={() => setRegionIndex((i) => Math.min(pages.length - 1, i + 1))}
-            disabled={regionIndex === pages.length - 1}
-            className="rounded border px-2 py-1 disabled:opacity-40"
-          >
-            Next region
-          </button>
-        </div>
-      )}
+      <ViewerToolbar
+        zoom={zoom}
+        onZoomIn={() => setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP))}
+        onZoomOut={() => setZoom((z) => Math.max(MIN_ZOOM, z - ZOOM_STEP))}
+        page={currentPage}
+        totalPages={numPages}
+        regionIndex={pages.length > 1 ? regionIndex : null}
+        totalRegions={pages.length}
+        onPrevRegion={() => setRegionIndex((i) => Math.max(0, i - 1))}
+        onNextRegion={() => setRegionIndex((i) => Math.min(pages.length - 1, i + 1))}
+      />
       <Document
         file={fileUrl}
         onLoadSuccess={(doc) => setNumPages(doc.numPages)}
         loading={<p className="p-8 text-sm text-neutral-400">Loading answer sheet…</p>}
       >
-        <PageCanvas pageNumber={currentPage} regions={currentRegions} />
+        <PageCanvas pageNumber={currentPage} regions={currentRegions} width={BASE_WIDTH * zoom} />
       </Document>
-      {numPages && (
-        <p className="text-xs text-neutral-400">
-          Page {currentPage} of {numPages}
-        </p>
-      )}
     </div>
   );
 }

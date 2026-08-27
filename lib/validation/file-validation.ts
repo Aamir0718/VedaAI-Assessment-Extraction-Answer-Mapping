@@ -12,7 +12,8 @@ export const ALLOWED_MIME_TYPES = [
   "image/webp",
 ] as const;
 
-const DEFAULT_MAX_FILE_SIZE_MB = 20;
+/** Also used client-side purely for display ("Max 20MB") — a real env override still wins server-side. */
+export const DEFAULT_MAX_FILE_SIZE_MB = 20;
 
 function maxFileSizeBytes(): number {
   const configured = Number(process.env.MAX_FILE_SIZE_MB);

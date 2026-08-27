@@ -105,9 +105,10 @@ list of tradeoffs.
 
 ## Tech Stack
 
-Next.js (App Router, TypeScript), Tailwind CSS, `pdfjs-dist` +
-`react-pdf` for PDF text extraction/rendering, `@google/generative-ai`
-(Gemini) for vision, `zod` for schema validation, `vitest` for tests.
+Next.js (App Router, TypeScript), Tailwind CSS, `lucide-react` icons,
+`pdfjs-dist` + `react-pdf` for PDF text extraction/rendering,
+`@google/generative-ai` (Gemini) for vision, `zod` for schema validation,
+`vitest` for tests.
 
 ## Local Setup
 
@@ -120,6 +121,13 @@ npm run dev
 ## Environment Variables
 
 See [.env.example](./.env.example).
+
+> **Gotcha:** Next.js loads `.env.local` but never overrides a variable
+> that's already set in your shell/OS environment. If AI calls fail with
+> an auth error even though `.env.local` looks correct, check for a
+> pre-existing system-level `GEMINI_API_KEY` (`printenv GEMINI_API_KEY` on
+> macOS/Linux, `[System.Environment]::GetEnvironmentVariable("GEMINI_API_KEY","User")`
+> on Windows) shadowing it — remove/update that instead of the `.env.local` value.
 
 ## Testing
 

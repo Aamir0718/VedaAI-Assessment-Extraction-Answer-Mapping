@@ -33,6 +33,8 @@ export async function* processAssessment(files: {
     yield stageEvent("preparing-results", "Preparing results");
     yield { type: "result", result: { questions, answers, mappings } };
   } catch (err) {
+    // Full detail server-side only — the client only ever sees the friendly message.
+    console.error("processAssessment failed:", err);
     yield { type: "error", message: toFriendlyMessage(err) };
   }
 }

@@ -3,7 +3,7 @@ import type { ZodType } from "zod";
 import type { FileInput } from "@/lib/validation/file-validation";
 import { AiOutputError } from "./types";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 function getModel() {
   const apiKey = process.env.GEMINI_API_KEY;
