@@ -59,3 +59,77 @@ clean. No tests yet (nothing to unit-test until Milestone 2).
 
 **Next:** Milestone 2 — question parser (deterministic + AI fallback) and
 answer extraction (`lib/ai/`, `lib/extraction/`).
+
+## Milestone 2 — Extraction (done)
+
+- `lib/validation/file-validation.ts`: deterministic `validateFile()` (mime
+  type allowlist + size limit from `MAX_FILE_SIZE_MB`, default 20MB) and the
+  shared `FileInput` type (`buffer`/`mimeType`/`name`) used everywhere a raw
+  uploaded document is passed around.
+- `lib/extraction/question-patterns.ts` + `question-parser.ts`: regex-driven
+  deterministic parser. Recognizes `1.`/`2)`, sub-parts `11(a)`/`11 (a)`/
+  `11.a`, roman-numeral sub-parts `12(i)`/`12(ii)`, and an optional leading
+  `Q`/`Question` prefix. Sub-parts become independent `Question` entries
+  (never merged into their parent number), original printed order is
+  preserved verbatim (the parser never sorts), and continuation lines are
+  appended to whichever question is currently open. 7 unit tests, no I/O.
+- `lib/extraction/pdf-text.ts`: per-page text extraction via
+  `pdfjs-dist/legacy/build/pdf.mjs` (the Node-safe legacy build — no canvas
+  needed for text-only extraction, confirming the plan's "no rasterization"
+  decision). Had to explicitly wire `GlobalWorkerOptions.workerSrc` and
+  `standardFontDataUrl` to `file://` URLs resolved from `node_modules` —
+  pdfjs-dist doesn't locate these automatically outside a bundler, and on
+  Windows the path must be a proper `file://` URL (a raw `C:\...` path
+  throws "Only URLs with a scheme in: file, data, and node are supported").
+  Verified against a real PDF generated with `pdf-lib` (added as a dev
+  dependency purely to generate synthetic PDF fixtures at test time — no
+  binary fixtures committed).
+- `lib/extraction/extract-questions.ts`: orchestrator — tries the
+  deterministic parser first and trusts it whenever it finds ≥1 question;
+  falls back to one AI call only when the PDF has no embedded text (image-
+  based) or the parser recognized zero labels (complex/unusual layout).
+  Tests mock `geminiAnalyzer` to assert the AI path is *not* called on the
+  happy path, and *is* called on both fallback triggers.
+- `lib/extraction/extract-answers.ts`: thin wrapper assigning stable
+  `a-{n}` ids to whatever Gemini returns, in its returned order (order here
+  isn't semantically meaningful the way question order is — the UI keys off
+  question order, not answer order).
+- `lib/ai/types.ts`: the `DocumentAnalyzer` interface (per the plan's AI
+  boundary — `extractQuestionsFromDocument`, `extractAnswers`,
+  `resolveAmbiguousMappings`, `evaluate`, the latter two batched over
+  arrays, not per-item), `AiOutputError`, and `Extracted*`/`ResolvedMapping`
+  types (the AI-provided subset of each domain type — ids are always
+  assigned by our code, never trusted from the model).
+- `lib/ai/schemas.ts`: Zod schemas mirroring exactly what each prompt asks
+  for — nothing more. `resolvedMappingSchema`'s `method` is constrained to
+  `"semantic" | "unmapped"` only, since explicit/normalized/positional
+  methods are decided deterministically in Milestone 3 and never come from
+  the model.
+- `lib/ai/prompts.ts`: one short prompt per `DocumentAnalyzer` method.
+  Mapping/evaluation prompts embed only the minimal JSON (ids, text,
+  candidate list) the model needs — never the raw document bytes again.
+  The mapping prompt explicitly tells the model to return `"unmapped"`
+  rather than guess, matching the "never hallucinate a mapping" requirement.
+- `lib/ai/client.ts`: single call site (`generateJson`) used by every
+  `DocumentAnalyzer` method — builds the Gemini `Part[]` (prompt text +
+  inline-base64 files), requests JSON mode, strips an accidental markdown
+  fence, `JSON.parse`s, and Zod-validates before returning. Any failure
+  (missing API key, network error, non-JSON output, schema mismatch) throws
+  `AiOutputError` — nothing unvalidated ever leaves this module.
+- `lib/ai/gemini-analyzer.ts`: implements `DocumentAnalyzer` using the above
+  — each method is a single `generateJson` call. `resolveAmbiguousMappings`
+  and `evaluate` short-circuit to `[]` without a network call when given an
+  empty input array (there's nothing to batch).
+- Dependency note: `zod@4` — used the same object/array/enum API as v3, no
+  compatibility issues encountered.
+- No live Gemini calls in the test suite (per the plan) — `gemini-analyzer`
+  is mocked in extraction tests; the AI call path itself will get a manual
+  smoke test once `GEMINI_API_KEY` is available.
+
+**Verification:** `npm run typecheck && npm run lint && npm run test && npm run build`
+all clean. 19 tests passing across 5 files. Largest new file is 66 lines
+(`question-parser.ts`) — well under the 150-line cap.
+
+**Next:** Milestone 3 — deterministic answer mapping (`lib/mapping/`):
+label normalization, explicit/normalized matching, positional fallback,
+batched AI semantic fallback, confidence model, full edge-case test corpus.

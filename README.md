@@ -22,9 +22,9 @@ mapping-and-highlighting workflow.
 
 - [ ] Upload with file-type/size validation and clear previews
 - [ ] Real, stage-by-stage processing progress (no generic spinner)
-- [ ] Deterministic question extraction (printed text), AI fallback for
+- [x] Deterministic question extraction (printed text), AI fallback for
       image-based/complex layouts
-- [ ] Handwriting transcription + bounding-box detection via Gemini
+- [x] Handwriting transcription + bounding-box detection via Gemini
 - [ ] Deterministic-first answer mapping with a confidence model, AI only
       for genuinely ambiguous cases, never a silent drop
 - [ ] Multi-page answer support with region-by-region navigation
