@@ -1,9 +1,12 @@
-/** Raw bytes of an uploaded document, independent of how it arrived. */
-export type FileInput = {
-  buffer: Buffer;
-  mimeType: string;
-  name: string;
-};
+/** One uploaded file's raw bytes. */
+export type FilePart = { buffer: Buffer; mimeType: string };
+
+/**
+ * A single logical document — either one PDF (its pages live inside the
+ * PDF itself) or one-or-more images, each representing one page in the
+ * order given. Never a mix of the two.
+ */
+export type FileInput = { parts: FilePart[]; name: string };
 
 export const ALLOWED_MIME_TYPES = [
   "application/pdf",
@@ -27,7 +30,7 @@ export type FileValidationResult =
 
 type FileMeta = { type: string; size: number; name: string };
 
-/** Shared by the server check (below) and the client pre-check — metadata only, no bytes. */
+/** Shared by every validation path below — metadata only, no bytes. */
 function validateMeta(file: FileMeta): FileValidationResult {
   if (file.size === 0) {
     return { valid: false, error: `"${file.name}" is empty.` };
@@ -49,11 +52,6 @@ function validateMeta(file: FileMeta): FileValidationResult {
   return { valid: true };
 }
 
-/** Deterministic, dependency-free validation — no AI, no I/O. Authoritative check, run server-side. */
-export function validateFile(file: FileInput): FileValidationResult {
-  return validateMeta({ type: file.mimeType, size: file.buffer.byteLength, name: file.name });
-}
-
 /**
  * Same rules, usable directly against a browser File's metadata (no bytes
  * read) for instant feedback on selection — the server still re-validates
@@ -61,4 +59,30 @@ export function validateFile(file: FileInput): FileValidationResult {
  */
 export function validateFileMeta(file: FileMeta): FileValidationResult {
   return validateMeta(file);
+}
+
+/**
+ * Authoritative server-side check for one whole document. Validates every
+ * page/part individually, and — when there's more than one — requires
+ * they all be images: a PDF is a complete document on its own and can't
+ * be combined with anything else.
+ */
+export function validateFileInput(input: FileInput): FileValidationResult {
+  if (input.parts.length === 0) {
+    return { valid: false, error: `"${input.name}" has no pages.` };
+  }
+
+  for (const part of input.parts) {
+    const check = validateMeta({ type: part.mimeType, size: part.buffer.byteLength, name: input.name });
+    if (!check.valid) return check;
+  }
+
+  if (input.parts.length > 1 && input.parts.some((p) => p.mimeType === "application/pdf")) {
+    return {
+      valid: false,
+      error: `"${input.name}": a PDF must be uploaded on its own, not combined with other files.`,
+    };
+  }
+
+  return { valid: true };
 }

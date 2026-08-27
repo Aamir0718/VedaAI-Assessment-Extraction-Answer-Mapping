@@ -766,3 +766,93 @@ just unit-test fixtures.
 `computeTotalMarks`'s choice-group/override handling, 2 wiring checks in
 `process-assessment.test.ts`/`extract-questions.test.ts`). Largest touched
 file: 87 lines (`question-parser.ts`).
+
+## Feature — multiple images per document
+
+User's ask: let the upload accept multiple images (photographed pages),
+not just one PDF or one image, per document.
+
+**Design decision made before writing any code, and why it matters.**
+Considered two approaches:
+- *Combine images into one PDF server-side* (using `pdf-lib`, already a
+  dependency for test fixtures) before handing it to the existing
+  PDF-only pipeline. Minimal changes to extraction/AI/mapping/viewer —
+  but creates a real sync problem: the client only has the *original*
+  image files, not the server's combined PDF, so the viewer couldn't
+  reopen the exact document the AI actually analyzed without the server
+  sending the assembled PDF back. Also `pdf-lib` can't embed WebP, so
+  multi-image uploads would silently lose WebP support.
+- *Generalize the document model itself* to carry one-or-more parts
+  (`FileInput = { parts: { buffer, mimeType }[], name }`) — a PDF is
+  still just one part (pages live inside it); multiple images become
+  multiple parts, one per page. Chosen instead: Gemini's `generateContent`
+  already accepts several inline parts in one call, so no image→PDF
+  conversion is needed for the AI side at all; the client already holds
+  the original image files it uploaded, so the viewer can build blob URLs
+  straight from them with page numbers matching by construction (same
+  array, same order, both sides); and no new runtime dependency or format
+  limitation. Touches more files, but every change is small and
+  mechanical — judged worth it over the more contained-looking but
+  actually-more-fragile PDF-combination path.
+- Client-side page-count preview (`FileDropzone`) only runs for a single
+  PDF — for multiple images there's nothing to compute (each file is
+  already exactly one page).
+
+**What changed, by layer:**
+- `lib/validation/file-validation.ts`: `FileInput` generalized to
+  `{ parts: FilePart[]; name }`. New `validateFileInput()` validates every
+  part and rejects mixing a PDF with anything else (a PDF is a complete
+  document on its own).
+- `lib/ai/client.ts`: `toPart` → `toParts`, flat-mapped across every part
+  of every document sent — Gemini receives N inline image parts (or the
+  one PDF part) in the same `generateContent` call it always made.
+- `lib/ai/prompts.ts`: `ANSWER_EXTRACTION_PROMPT` now explicitly tells the
+  model that multiple images arrive as sequential pages 1, 2, 3… in the
+  order given, so `AnswerRegion.page` lines up with the array order the
+  client already has.
+- `lib/extraction/extract-questions.ts`: the "try the deterministic parser"
+  branch now only fires for the single-PDF case
+  (`parts.length === 1 && parts[0].mimeType === "application/pdf"`) —
+  multiple images always go through the AI fallback, which is correct
+  since there's no embedded text to read deterministically from a photo.
+- `app/api/process/route.ts`: reads every file under a field name via
+  `form.getAll` (not `form.get`) — one document's pages can now arrive as
+  several form-data entries under the same field.
+- `components/viewer/ImageViewer.tsx`: generalized from one image to
+  `imageUrls: string[]`, reusing the exact same region/page-navigation
+  pattern `PdfViewer` already had (`pagesForRegions`/`regionsByPage`) — a
+  single image is now just the one-URL case of the same component, so
+  there's no separate "multi-image viewer" to maintain.
+- `lib/state/assessment-store.tsx` / `use-process-assessment.ts`: the
+  answer-sheet file becomes `{ urls: string[]; mimeType }`; `submit()`
+  takes `File[]` per document and creates one blob URL per file, in the
+  same order they were uploaded (matching the page numbers Gemini assigned).
+- `components/upload/FileDropzone.tsx` + new `MultiFilePreview.tsx`: the
+  dropzone now has three states (empty / one file / several files), accepts
+  drag-and-drop of multiple files, and rejects a PDF mixed with images
+  client-side with an immediate, specific message — the server re-validates
+  the same rule authoritatively via `validateFileInput`. Per-file removal
+  and a "Change" reselect action in the multi-file state.
+
+**Verification.** Real, non-mocked exercise of the whole path: selected
+three PNG images for the answer sheet via a real `setInputFiles` multi-
+selection, confirmed the preview showed "3 images selected" with per-page
+labels, removed one (correctly dropped to 2, correctly re-rendered as the
+multi-file list rather than the single-file card), then reselected down to
+exactly one file and confirmed it correctly switched back to the ordinary
+single-file preview card (three-state branching all exercised). Confirmed
+the mixed PDF+image case is rejected immediately with the intended message,
+never reaching the server. Then ran a real submission (one PDF question
+paper + two PNG images as the answer sheet) against the live dev server —
+the question paper parsed deterministically as before, and the pipeline
+correctly reached "Reading answer sheet" (proving both images arrived
+server-side, were validated as one two-part document, and were handed to
+Gemini) before failing at the *same*, already-documented, project-level
+daily-quota wall — not a new failure, and proof the new code path is
+reached and behaves correctly right up to the external limit.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test
+&& npm run build` all clean — **99 tests** (4 new: multi-part validation
+cases in `file-validation.test.ts`, an AI-fallback case for multiple
+photographed pages in `extract-questions.test.ts`). Largest touched file:
+127 lines (`FileDropzone.tsx`, now handling three UI states).

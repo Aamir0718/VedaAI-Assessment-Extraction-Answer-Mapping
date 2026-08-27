@@ -8,7 +8,7 @@ vi.mock("@/lib/ai/gemini-analyzer", () => ({ geminiAnalyzer: {} }));
 
 const { processAssessment } = await import("@/lib/processing/process-assessment");
 
-const file = { buffer: Buffer.from("x"), mimeType: "application/pdf", name: "f.pdf" };
+const file = { parts: [{ buffer: Buffer.from("x"), mimeType: "application/pdf" }], name: "f.pdf" };
 
 async function collect(files: Parameters<typeof processAssessment>[0]) {
   const events = [];

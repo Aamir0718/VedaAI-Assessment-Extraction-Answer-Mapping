@@ -8,12 +8,12 @@ import { ImageViewer } from "./ImageViewer";
 // disabling SSR here avoids importing it on the server at all.
 const PdfViewer = dynamic(() => import("./PdfViewer").then((m) => m.PdfViewer), { ssr: false });
 
-type Props = { file: { url: string; mimeType: string }; regions: AnswerRegion[] };
+type Props = { file: { urls: string[]; mimeType: string }; regions: AnswerRegion[] };
 
 /** Picks the right renderer for the uploaded answer sheet's file type. */
 export function AnswerSheetViewer({ file, regions }: Props) {
   if (file.mimeType === "application/pdf") {
-    return <PdfViewer fileUrl={file.url} regions={regions} />;
+    return <PdfViewer fileUrl={file.urls[0]} regions={regions} />;
   }
-  return <ImageViewer imageUrl={file.url} regions={regions} />;
+  return <ImageViewer imageUrls={file.urls} regions={regions} />;
 }

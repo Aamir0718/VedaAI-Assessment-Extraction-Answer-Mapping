@@ -14,6 +14,9 @@ Return ONLY a JSON array, each item: { "number": string, "text": string, "maxMar
 No markdown, no commentary, no extra fields.`;
 
 export const ANSWER_EXTRACTION_PROMPT = `You are reading a student's handwritten answer sheet (possibly multiple pages).
+If given as a single PDF, its own pages are the page numbers. If given as
+multiple separate images, they are provided in order as consecutive pages
+starting at page 1 — the first image is page 1, the second is page 2, etc.
 Transcribe every distinct answer. For each answer, detect the question label
 the student wrote if legible (e.g. "Q5", "11(a)"), and report every visual
 region it occupies as a normalized (0 to 1) bounding box per page. An answer

@@ -17,8 +17,9 @@ function getModel() {
   });
 }
 
-function toPart(file: FileInput): Part {
-  return { inlineData: { mimeType: file.mimeType, data: file.buffer.toString("base64") } };
+/** A document is one-or-more parts (a PDF, or several sequential page images) — each becomes its own inline part. */
+function toParts(file: FileInput): Part[] {
+  return file.parts.map((p) => ({ inlineData: { mimeType: p.mimeType, data: p.buffer.toString("base64") } }));
 }
 
 /** Strips accidental markdown code fences before JSON.parse. */
@@ -37,7 +38,7 @@ export async function generateJson<T>(params: {
   files?: FileInput[];
   schema: ZodType<T>;
 }): Promise<T> {
-  const parts: Part[] = [{ text: params.prompt }, ...(params.files ?? []).map(toPart)];
+  const parts: Part[] = [{ text: params.prompt }, ...(params.files ?? []).flatMap(toParts)];
 
   let responseText: string;
   try {

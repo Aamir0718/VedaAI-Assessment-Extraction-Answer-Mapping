@@ -13,10 +13,10 @@ import { ALLOWED_MIME_TYPES } from "@/lib/validation/file-validation";
 const ACCEPT = ALLOWED_MIME_TYPES.join(",");
 
 export default function UploadPage() {
-  const [questionPaper, setQuestionPaper] = useState<File | null>(null);
-  const [answerSheet, setAnswerSheet] = useState<File | null>(null);
+  const [questionPaper, setQuestionPaper] = useState<File[]>([]);
+  const [answerSheet, setAnswerSheet] = useState<File[]>([]);
   const { submit, stages, error, isProcessing } = useProcessAssessment();
-  const isReady = questionPaper && answerSheet;
+  const isReady = questionPaper.length > 0 && answerSheet.length > 0;
 
   if (isProcessing || stages.length > 0) {
     return (
@@ -42,8 +42,8 @@ export default function UploadPage() {
         <div className="animate-fade-up rounded-2xl border border-neutral-200 bg-white/95 p-6 shadow-sm backdrop-blur sm:p-8">
           <UploadHero />
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <FileDropzone noun="Question Paper" accept={ACCEPT} file={questionPaper} onSelect={setQuestionPaper} />
-            <FileDropzone noun="Answer Sheet" accept={ACCEPT} file={answerSheet} onSelect={setAnswerSheet} />
+            <FileDropzone noun="Question Paper" accept={ACCEPT} files={questionPaper} onSelect={setQuestionPaper} />
+            <FileDropzone noun="Answer Sheet" accept={ACCEPT} files={answerSheet} onSelect={setAnswerSheet} />
           </div>
         </div>
 
@@ -53,7 +53,7 @@ export default function UploadPage() {
           <button
             type="button"
             disabled={!isReady}
-            onClick={() => questionPaper && answerSheet && submit(questionPaper, answerSheet)}
+            onClick={() => isReady && submit(questionPaper, answerSheet)}
             className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-2.5 text-sm font-medium text-white transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-lg enabled:hover:shadow-orange-200 enabled:active:translate-y-0 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
           >
             Process Assessment

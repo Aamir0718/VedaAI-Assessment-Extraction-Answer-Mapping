@@ -3,7 +3,8 @@
 ## Overview
 
 A web app that lets a teacher upload a printed question paper and a
-handwritten student answer sheet (PDF or images), then automatically:
+handwritten student answer sheet — each either a single PDF or several
+photographed page images — then automatically:
 
 - extracts every question in original order and numbering,
 - transcribes handwritten answers and locates exactly where each one
@@ -22,7 +23,8 @@ mapping-and-highlighting workflow.
 
 ## Features
 
-- [x] Upload with file-type/size validation and clear previews
+- [x] Upload with file-type/size validation and clear previews — one PDF,
+      or multiple photographed pages as separate images, per document
 - [x] Real, stage-by-stage processing progress (no generic spinner)
 - [x] Deterministic question extraction (printed text), AI fallback for
       image-based/complex layouts
@@ -68,8 +70,9 @@ deterministic code.
    where present, a "Total Marks: 100" style header if the paper prints
    one, and links `"5(a) OR 5(b)"`-style alternatives into a choice group
    so only the attempted side ever counts toward the total.
-3. Extract answers — one Gemini call over the full answer sheet, returning
-   transcribed text + normalized bounding boxes per region.
+3. Extract answers — one Gemini call over the full answer sheet (whether
+   that's one PDF or several page images sent as ordered pages in the same
+   call), returning transcribed text + normalized bounding boxes per region.
 4. Map answers to questions (explicit label → normalized label →
    positional heuristic → batched AI semantic fallback → unmapped).
 5. Return the `AssessmentResult`. Evaluation, if requested, is a separate
@@ -193,9 +196,6 @@ Two things specific to this app worth knowing before deploying:
   approach — very messy handwriting will transcribe imperfectly. The
   system surfaces uncertainty (confidence, "Needs review", "Unmatched")
   rather than hiding it, but it can't fix a genuinely illegible scan.
-- **One file per document.** A multi-page handwritten answer sheet is
-  expected as a single PDF scan (or a single image for a one-page sheet),
-  not multiple separate image files stitched into one submission.
 - **A hard refresh on the results page loses the answer-sheet preview.**
   The `AssessmentResult` itself survives (mirrored to `sessionStorage`),
   but the uploaded file's blob URL doesn't — there's no server-side file
@@ -213,8 +213,6 @@ Two things specific to this app worth knowing before deploying:
 
 ## Future Improvements
 
-- Support a multi-image answer sheet (several photographed pages as one
-  submission) rather than requiring a single PDF/image.
 - Persist results server-side (still without a full database — e.g. a
   short-lived signed URL or object storage) so a results link can be
   reopened later or shared, instead of living only in the browser tab.

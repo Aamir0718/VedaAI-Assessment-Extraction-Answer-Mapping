@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { validateFile, type FileInput } from "@/lib/validation/file-validation";
+import { validateFileInput, type FileInput } from "@/lib/validation/file-validation";
 import { processAssessment } from "@/lib/processing/process-assessment";
 
 // Needs Buffer/pdfjs-dist — not Edge-compatible. Generous duration since a
@@ -7,16 +7,21 @@ import { processAssessment } from "@/lib/processing/process-assessment";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-async function readField(form: FormData, field: string): Promise<FileInput | null> {
-  const file = form.get(field);
-  if (!(file instanceof File)) return null;
-  return { buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type, name: file.name };
+/** A document's pages arrive as one-or-more files under the same field name. */
+async function readDocument(form: FormData, field: string): Promise<FileInput | null> {
+  const files = form.getAll(field).filter((v): v is File => v instanceof File);
+  if (files.length === 0) return null;
+
+  const parts = await Promise.all(
+    files.map(async (file) => ({ buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type }))
+  );
+  return { parts, name: files[0].name };
 }
 
 export async function POST(request: NextRequest) {
   const form = await request.formData();
-  const questionPaper = await readField(form, "questionPaper");
-  const answerSheet = await readField(form, "answerSheet");
+  const questionPaper = await readDocument(form, "questionPaper");
+  const answerSheet = await readDocument(form, "answerSheet");
 
   if (!questionPaper || !answerSheet) {
     return Response.json(
@@ -25,8 +30,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  for (const file of [questionPaper, answerSheet]) {
-    const result = validateFile(file);
+  for (const doc of [questionPaper, answerSheet]) {
+    const result = validateFileInput(doc);
     if (!result.valid) {
       return Response.json({ error: result.error }, { status: 400 });
     }

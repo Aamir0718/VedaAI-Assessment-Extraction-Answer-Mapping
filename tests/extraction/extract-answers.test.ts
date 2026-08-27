@@ -17,8 +17,7 @@ describe("extractAnswers", () => {
     ]);
 
     const result = await extractAnswersFromSheet({
-      buffer: Buffer.from("fake-pdf-bytes"),
-      mimeType: "application/pdf",
+      parts: [{ buffer: Buffer.from("fake-pdf-bytes"), mimeType: "application/pdf" }],
       name: "answers.pdf",
     });
 

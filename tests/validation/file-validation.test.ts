@@ -1,50 +1,86 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { validateFile, validateFileMeta, type FileInput } from "@/lib/validation/file-validation";
+import { validateFileInput, validateFileMeta, type FileInput } from "@/lib/validation/file-validation";
 
-function file(overrides: Partial<FileInput> = {}): FileInput {
+function doc(overrides: Partial<FileInput> = {}): FileInput {
   return {
-    buffer: Buffer.from("dummy"),
-    mimeType: "application/pdf",
+    parts: [{ buffer: Buffer.from("dummy"), mimeType: "application/pdf" }],
     name: "paper.pdf",
     ...overrides,
   };
 }
 
-describe("validateFile", () => {
+describe("validateFileInput", () => {
   afterEach(() => {
     delete process.env.MAX_FILE_SIZE_MB;
   });
 
-  it("accepts a valid PDF", () => {
-    expect(validateFile(file())).toEqual({ valid: true });
+  it("accepts a valid single-part PDF", () => {
+    expect(validateFileInput(doc())).toEqual({ valid: true });
   });
 
   it("accepts allowed image types", () => {
-    expect(validateFile(file({ mimeType: "image/png" }))).toEqual({ valid: true });
-    expect(validateFile(file({ mimeType: "image/jpeg" }))).toEqual({ valid: true });
+    expect(
+      validateFileInput(doc({ parts: [{ buffer: Buffer.from("x"), mimeType: "image/png" }] }))
+    ).toEqual({ valid: true });
+    expect(
+      validateFileInput(doc({ parts: [{ buffer: Buffer.from("x"), mimeType: "image/jpeg" }] }))
+    ).toEqual({ valid: true });
+  });
+
+  it("accepts multiple image pages for one document", () => {
+    const result = validateFileInput(
+      doc({
+        parts: [
+          { buffer: Buffer.from("a"), mimeType: "image/jpeg" },
+          { buffer: Buffer.from("b"), mimeType: "image/png" },
+        ],
+      })
+    );
+    expect(result).toEqual({ valid: true });
+  });
+
+  it("rejects a PDF combined with another file", () => {
+    const result = validateFileInput(
+      doc({
+        parts: [
+          { buffer: Buffer.from("a"), mimeType: "application/pdf" },
+          { buffer: Buffer.from("b"), mimeType: "image/png" },
+        ],
+      })
+    );
+    expect(result.valid).toBe(false);
+  });
+
+  it("rejects a document with no pages", () => {
+    expect(validateFileInput(doc({ parts: [] })).valid).toBe(false);
   });
 
   it("rejects an unsupported mime type", () => {
-    const result = validateFile(file({ mimeType: "application/msword" }));
+    const result = validateFileInput(
+      doc({ parts: [{ buffer: Buffer.from("x"), mimeType: "application/msword" }] })
+    );
     expect(result.valid).toBe(false);
   });
 
-  it("rejects an empty file", () => {
-    const result = validateFile(file({ buffer: Buffer.alloc(0) }));
+  it("rejects an empty part", () => {
+    const result = validateFileInput(
+      doc({ parts: [{ buffer: Buffer.alloc(0), mimeType: "application/pdf" }] })
+    );
     expect(result.valid).toBe(false);
   });
 
-  it("rejects a file over the configured size limit", () => {
+  it("rejects a part over the configured size limit", () => {
     process.env.MAX_FILE_SIZE_MB = "1";
     const oversized = Buffer.alloc(2 * 1024 * 1024);
-    const result = validateFile(file({ buffer: oversized }));
+    const result = validateFileInput(doc({ parts: [{ buffer: oversized, mimeType: "application/pdf" }] }));
     expect(result.valid).toBe(false);
   });
 
-  it("accepts a file within a custom size limit", () => {
+  it("accepts a part within a custom size limit", () => {
     process.env.MAX_FILE_SIZE_MB = "1";
     const smallEnough = Buffer.alloc(512 * 1024);
-    expect(validateFile(file({ buffer: smallEnough })).valid).toBe(true);
+    const result = validateFileInput(doc({ parts: [{ buffer: smallEnough, mimeType: "application/pdf" }] }));
+    expect(result.valid).toBe(true);
   });
 });
 

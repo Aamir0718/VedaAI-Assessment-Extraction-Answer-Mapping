@@ -14,8 +14,9 @@ export type QuestionExtractionResult = { questions: Question[]; paperTotalMarks?
  * regex parser to recognize any question label at all.
  */
 export async function extractQuestions(doc: FileInput): Promise<QuestionExtractionResult> {
-  if (doc.mimeType === "application/pdf") {
-    const pages = await extractPdfPageText(doc.buffer);
+  const isSinglePdf = doc.parts.length === 1 && doc.parts[0].mimeType === "application/pdf";
+  if (isSinglePdf) {
+    const pages = await extractPdfPageText(doc.parts[0].buffer);
     const rawText = pages.join("\n");
     const questions = parseQuestions(rawText);
     if (questions.length > 0) {

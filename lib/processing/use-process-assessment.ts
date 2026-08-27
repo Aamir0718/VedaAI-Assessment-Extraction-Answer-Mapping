@@ -14,14 +14,14 @@ export function useProcessAssessment() {
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  async function submit(questionPaper: File, answerSheet: File) {
+  async function submit(questionPaper: File[], answerSheet: File[]) {
     setError(null);
     setStages([]);
     setIsProcessing(true);
 
     const form = new FormData();
-    form.append("questionPaper", questionPaper);
-    form.append("answerSheet", answerSheet);
+    questionPaper.forEach((file) => form.append("questionPaper", file));
+    answerSheet.forEach((file) => form.append("answerSheet", file));
 
     try {
       const response = await fetch("/api/process", { method: "POST", body: form });
@@ -38,7 +38,10 @@ export function useProcessAssessment() {
           setIsProcessing(false);
           return;
         } else if (event.type === "result") {
-          setResult(event.result, { url: URL.createObjectURL(answerSheet), mimeType: answerSheet.type });
+          setResult(event.result, {
+            urls: answerSheet.map((file) => URL.createObjectURL(file)),
+            mimeType: answerSheet[0].type,
+          });
           setIsProcessing(false);
           router.push("/assessment");
         }
