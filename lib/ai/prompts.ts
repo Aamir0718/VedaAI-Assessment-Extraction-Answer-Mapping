@@ -8,9 +8,22 @@ export const QUESTION_EXTRACTION_PROMPT = `You are reading a printed exam questi
 Extract every question and labelled sub-part (e.g. "11(a)" and "11(b)" are
 two separate entries) in the exact order they are printed, preserving the
 original numbering exactly as written. If a mark/point value is printed
-next to a question (e.g. "[5]", "(10 marks)", "[2M]"), report it as
-maxMarks and do not include the annotation itself in "text".
-Return ONLY a JSON array, each item: { "number": string, "text": string, "maxMarks"?: number }.
+next to a question (in a table column or inline, e.g. "[5]", "(10 marks)",
+or just a bare "10"), report it as maxMarks and do not include the
+annotation itself in "text".
+If the paper offers a choice between whole questions (e.g. "Q1 OR Q2",
+"Answer Q1 or Q2", questions grouped under one module where only one is
+required), give every question and sub-part on BOTH sides of that choice
+the same "choiceGroup" string — only questions the paper actually presents
+as alternatives to each other, never questions that are all required.
+If the paper prints its own overall total (e.g. "Max Marks: 100",
+"Total Marks: 80") anywhere, report it as paperTotalMarks — this is
+normally different from (smaller than) the sum of every question's marks,
+since students only answer some of what's printed when choices exist.
+Return ONLY a JSON object: {
+  "questions": [{ "number": string, "text": string, "maxMarks"?: number, "choiceGroup"?: string }],
+  "paperTotalMarks"?: number
+}
 No markdown, no commentary, no extra fields.`;
 
 export const ANSWER_EXTRACTION_PROMPT = `You are reading a student's handwritten answer sheet (possibly multiple pages).

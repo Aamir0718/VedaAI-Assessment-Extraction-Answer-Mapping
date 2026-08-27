@@ -8,8 +8,15 @@ export const extractedQuestionSchema = z.object({
   number: z.string().min(1),
   text: z.string().min(1),
   maxMarks: z.number().positive().optional(),
+  /** Shared across every alternative in a printed "OR" choice — same rules as the deterministic parser's. */
+  choiceGroup: z.string().min(1).optional(),
 });
-export const extractedQuestionsSchema = z.array(extractedQuestionSchema);
+
+/** Mirrors QuestionExtractionResult — paperTotalMarks is the AI-fallback's equivalent of the printed-header detector. */
+export const questionExtractionSchema = z.object({
+  questions: z.array(extractedQuestionSchema),
+  paperTotalMarks: z.number().positive().optional(),
+});
 
 const answerRegionSchema = z.object({
   page: z.number().int().min(1),

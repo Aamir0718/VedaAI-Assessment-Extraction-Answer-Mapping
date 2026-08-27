@@ -136,4 +136,29 @@ describe("parseQuestions", () => {
     expect(result[0].choiceGroup).toBeUndefined();
     expect(result[1].choiceGroup).toBeUndefined();
   });
+
+  it("links every sub-part of two whole alternative questions, not just the ones adjacent to OR", () => {
+    // Real university-paper pattern: "Q1(a)+Q1(b) OR Q2(a)+Q2(b)", each
+    // sub-part individually marked — only one full side should count.
+    const text = `
+      Q.1 a. List and explain any four characteristics of distributed systems. [10]
+      Q.1 b. Describe the different domains of distributed systems. [10]
+      OR
+      Q.2 a. "Transparency is the most important feature." Justify with example. [10]
+      Q.2 b. What are the trends in Distributed Systems? Explain with example. [10]
+      Q.3 a. Briefly discuss the file service architecture. [10]
+      Q.3 b. Explain the requirements of distributed file system. [10]
+    `;
+    const result = parseQuestions(text);
+    expect(result.map((q) => q.number)).toEqual(["1(a)", "1(b)", "2(a)", "2(b)", "3(a)", "3(b)"]);
+
+    const [q1a, q1b, q2a, q2b, q3a, q3b] = result;
+    expect(q1a.choiceGroup).toBeDefined();
+    expect(q1a.choiceGroup).toBe(q1b.choiceGroup);
+    expect(q1a.choiceGroup).toBe(q2a.choiceGroup);
+    expect(q1a.choiceGroup).toBe(q2b.choiceGroup);
+    // Module 3 has no OR in this fixture — must not accidentally inherit a group.
+    expect(q3a.choiceGroup).toBeUndefined();
+    expect(q3b.choiceGroup).toBeUndefined();
+  });
 });

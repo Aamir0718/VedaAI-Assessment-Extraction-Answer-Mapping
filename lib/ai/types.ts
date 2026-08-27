@@ -12,6 +12,9 @@ export class AiOutputError extends Error {
 /** AI-provided subset of a Question — id/order are assigned by our code. */
 export type ExtractedQuestion = Omit<Question, "id">;
 
+/** Mirrors QuestionExtractionResult, since this is the AI-fallback's equivalent of the deterministic parser's output. */
+export type ExtractedQuestions = { questions: ExtractedQuestion[]; paperTotalMarks?: number };
+
 /** AI-provided subset of an Answer — id is assigned by our code. */
 export type ExtractedAnswer = Omit<Answer, "id">;
 
@@ -25,7 +28,7 @@ export type ResolvedMapping = Omit<AnswerMapping, "confidence"> & { confidence: 
  */
 export interface DocumentAnalyzer {
   /** Fallback only — used when deterministic PDF-text parsing isn't viable. */
-  extractQuestionsFromDocument(doc: FileInput): Promise<ExtractedQuestion[]>;
+  extractQuestionsFromDocument(doc: FileInput): Promise<ExtractedQuestions>;
   /** Always used — handwriting transcription + region detection. */
   extractAnswers(doc: FileInput): Promise<ExtractedAnswer[]>;
   /** Batched — all still-ambiguous answers resolved in one call. */

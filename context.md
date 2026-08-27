@@ -856,3 +856,99 @@ reached and behaves correctly right up to the external limit.
 cases in `file-validation.test.ts`, an AI-fallback case for multiple
 photographed pages in `extract-questions.test.ts`). Largest touched file:
 127 lines (`FileDropzone.tsx`, now handling three UI states).
+
+## Bug fix — total marks wrong on a real university paper (200 instead of 100)
+
+The user attached a real scanned exam paper (BCS515D, Distributed
+Systems — 5 modules, "Answer any FIVE full questions, choosing ONE full
+question from each module", printed "Max. Marks: 100") and reported the
+app showed a total out of 200. Working from the paper's visible structure
+(no direct file access — Claude Code doesn't expose attached-document
+paths on disk; reasoned from the shown content and verified against a
+faithful synthetic replica through the real extraction pipeline instead)
+found **two separate, compounding bugs**, not one:
+
+1. **Choice-group linking was too narrow.** This paper's "OR" separates
+   two *entire* multi-part questions — "Q1(a)+Q1(b) OR Q2(a)+Q2(b)" — not
+   two adjacent single sub-parts, which was the only case the original
+   `"5(a) OR 5(b)"`-style linker handled. It only ever grouped the one
+   sub-part immediately before "OR" with the one immediately after, so
+   Q1(a) and Q2(b) never got linked to anything and every one of the 20
+   sub-parts (5 modules × 2 alternatives × 2 parts × 10 marks) counted on
+   its own.
+2. **`paperTotalMarks` was only ever detected on the deterministic-parser
+   path.** A photocopied/scanned paper like this one very plausibly has no
+   real text layer at all, which sends extraction through the AI-vision
+   fallback — and that path never even attempted to read a "Max Marks"
+   header or detect choice groups, so nothing overrode the (also-wrong)
+   summed total.
+
+**Fixes:**
+- New `lib/extraction/choice-groups.ts` (`applyChoiceGroups`): groups
+  questions into contiguous "runs" of a shared base number (so "1(a)" +
+  "1(b)" are one run), but always starts a fresh run right after an "OR"
+  marker even when the base number repeats (so the original narrower
+  "5(a) OR 5(b)" case — an OR *within* one question number — still works).
+  Whichever run starts right after "OR" gets linked with the run
+  immediately before it, in full — every sub-part on both sides, not just
+  the two nearest the "OR" line. `question-parser.ts` now records an
+  `afterOr: boolean[]` alongside each parsed question during its normal
+  scan and hands both arrays to this module as a separate, independently
+  testable pass (mirrors how marks-annotation stripping is already a
+  separate pass for the same reason: it needs the fully-assembled list).
+- Found a **third, previously-unhandled sub-part convention** while
+  building a faithful test replica of this paper's table layout: it prints
+  the sub-part letter as its own table cell — "Q.1  a.  <text>" — number
+  and letter as separate whitespace-separated tokens, not "11(a)" or
+  "11.a" like the two conventions already supported. Added
+  `SUBPART_SPACE_PATTERN` (`/^\s*(\d{1,3})\s+([a-zA-Z])\s*[.)]\s+/`) for
+  it. Without this the parser would have found zero questions on a
+  text-layer version of this exact paper and silently gone to the AI
+  fallback instead — not wrong, but not what should happen when the text
+  is right there.
+- Also found and fixed a cosmetic-but-real issue in the same pass: a
+  "Module - 2" section-heading line (this paper has five) was getting
+  glued onto the end of whichever question preceded it as if it were
+  continuation text, polluting that question's displayed text. Added
+  `MODULE_HEADING_PATTERN` and skip such lines entirely, same as blank
+  lines.
+- **AI-fallback parity**, so the fix holds regardless of which path this
+  (or any) paper actually takes: `QUESTION_EXTRACTION_PROMPT` now
+  explicitly asks the model to detect the same "Max Marks: 100" header and
+  to assign a shared `choiceGroup` across *every* question and sub-part on
+  both sides of a printed choice — not just adjacent ones. The AI
+  extraction response shape changed from a bare array to
+  `{ questions: [...], paperTotalMarks?: number }`
+  (`questionExtractionSchema` in `lib/ai/schemas.ts`,
+  `ExtractedQuestions` in `lib/ai/types.ts`) so it can carry the same
+  information the deterministic path already did — `extractQuestions()`
+  now returns the same `{questions, paperTotalMarks}` shape no matter
+  which of the two paths produced it, and the UI/mapping/grading layers
+  don't need to know or care which one ran.
+
+**Verification.** Built a full synthetic PDF replicating this exact
+paper's real structure (all 5 modules, all 20 sub-parts, the "Q.1 a."
+table-cell format, "Module - N" headings between modules, "Max. Marks:
+100" header, "OR" between each module's two alternatives) and ran it
+through the actual `extractQuestions()` — not a mock — via `tsx`,
+bypassing only the always-AI answer-extraction step (still blocked by the
+same session-wide Gemini daily quota). Result: all 20 sub-parts extracted
+with exactly correct numbering, `paperTotalMarks: 100` correctly detected,
+all 5 module choice-pairs correctly linked (4 sub-parts each), zero
+"Module -" pollution in any question's text, and `computeTotalMarks`
+correctly returned `possible: 100` in both a worst-case scenario (every
+single sub-part somehow graded) and the realistic one (one full question
+per module) — the exact bug report, fixed and confirmed against the
+paper's real shape. The AI-fallback path's new schema/prompt/type
+plumbing is unit-tested with mocked responses (live end-to-end
+verification blocked by the same quota wall as grading has been all
+session) but is now structurally identical to — and shares the same
+`computeTotalMarks` consumer as — the already-verified deterministic path.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test
+&& npm run build` all clean — **105 tests** (4 new: direct
+`applyChoiceGroups` unit tests covering the whole-question-pair case, the
+single-sub-part case, the no-OR case, and multiple independent choice
+pairs in one paper without cross-linking; plus AI-fallback shape-parity
+coverage in `extract-questions.test.ts`). Largest touched file: 98 lines
+(`question-parser.ts`).

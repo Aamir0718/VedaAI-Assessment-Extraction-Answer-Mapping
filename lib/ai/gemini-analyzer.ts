@@ -10,18 +10,18 @@ import {
 import {
   evaluationsSchema,
   extractedAnswersSchema,
-  extractedQuestionsSchema,
+  questionExtractionSchema,
   resolvedMappingsSchema,
 } from "./schemas";
-import type { DocumentAnalyzer, ExtractedAnswer, ExtractedQuestion, ResolvedMapping } from "./types";
+import type { DocumentAnalyzer, ExtractedAnswer, ExtractedQuestions, ResolvedMapping } from "./types";
 
 /** Gemini-backed implementation of DocumentAnalyzer. One call per method. */
 export const geminiAnalyzer: DocumentAnalyzer = {
-  async extractQuestionsFromDocument(doc: FileInput): Promise<ExtractedQuestion[]> {
+  async extractQuestionsFromDocument(doc: FileInput): Promise<ExtractedQuestions> {
     return generateJson({
       prompt: QUESTION_EXTRACTION_PROMPT,
       files: [doc],
-      schema: extractedQuestionsSchema,
+      schema: questionExtractionSchema,
     });
   },
 

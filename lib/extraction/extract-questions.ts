@@ -25,5 +25,8 @@ export async function extractQuestions(doc: FileInput): Promise<QuestionExtracti
   }
 
   const extracted = await geminiAnalyzer.extractQuestionsFromDocument(doc);
-  return { questions: extracted.map((q, index) => ({ id: `q-${index + 1}`, ...q })) };
+  return {
+    questions: extracted.questions.map((q, index) => ({ id: `q-${index + 1}`, ...q })),
+    paperTotalMarks: extracted.paperTotalMarks,
+  };
 }

@@ -45,9 +45,9 @@ describe("extractQuestions", () => {
   });
 
   it("falls back to AI when the PDF has no recognizable question labels", async () => {
-    extractQuestionsFromDocument.mockResolvedValue([
-      { number: "1", text: "Recovered by AI." },
-    ]);
+    extractQuestionsFromDocument.mockResolvedValue({
+      questions: [{ number: "1", text: "Recovered by AI." }],
+    });
     const buffer = await makePdf("Just some prose, no numbering.");
     const result = await extractQuestions(pdfDoc(buffer));
 
@@ -56,7 +56,9 @@ describe("extractQuestions", () => {
   });
 
   it("falls back to AI directly for a single image-based question paper", async () => {
-    extractQuestionsFromDocument.mockResolvedValue([{ number: "1", text: "From image." }]);
+    extractQuestionsFromDocument.mockResolvedValue({
+      questions: [{ number: "1", text: "From image." }],
+    });
     const result = await extractQuestions({
       parts: [{ buffer: Buffer.from("fake-image-bytes"), mimeType: "image/png" }],
       name: "q.png",
@@ -67,7 +69,9 @@ describe("extractQuestions", () => {
   });
 
   it("falls back to AI directly for multiple photographed pages, never attempting PDF parsing", async () => {
-    extractQuestionsFromDocument.mockResolvedValue([{ number: "1", text: "From photos." }]);
+    extractQuestionsFromDocument.mockResolvedValue({
+      questions: [{ number: "1", text: "From photos." }],
+    });
     const result = await extractQuestions({
       parts: [
         { buffer: Buffer.from("page-1"), mimeType: "image/jpeg" },
@@ -78,5 +82,23 @@ describe("extractQuestions", () => {
 
     expect(extractQuestionsFromDocument).toHaveBeenCalledTimes(1);
     expect(result.questions).toEqual([{ id: "q-1", number: "1", text: "From photos." }]);
+  });
+
+  it("carries the AI's detected paperTotalMarks and choiceGroup through unchanged", async () => {
+    extractQuestionsFromDocument.mockResolvedValue({
+      questions: [
+        { number: "1(a)", text: "Part a.", choiceGroup: "g1" },
+        { number: "2(a)", text: "Part a alt.", choiceGroup: "g1" },
+      ],
+      paperTotalMarks: 100,
+    });
+    const result = await extractQuestions({
+      parts: [{ buffer: Buffer.from("scan"), mimeType: "image/jpeg" }],
+      name: "scan.jpg",
+    });
+
+    expect(result.paperTotalMarks).toBe(100);
+    expect(result.questions[0].choiceGroup).toBe("g1");
+    expect(result.questions[1].choiceGroup).toBe("g1");
   });
 });

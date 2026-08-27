@@ -36,8 +36,9 @@ mapping-and-highlighting workflow.
 - [x] Optional async grading (marks + feedback), plus a whole-paper total
       score using each question's own printed marks allocation — honoring
       the paper's own "Total Marks: 100" header when printed, and
-      "5(a) OR 5(b)"-style choice questions (only the attempted side
-      counts, never both)
+      module-style choice questions ("Q1 (parts a, b) OR Q2 (parts a, b)")
+      where only the attempted side counts, never both — both the
+      deterministic parser and the AI fallback detect these the same way
 - [x] Graceful error states — invalid files, corrupt PDFs, AI failures, zero
       questions/answers found — never a raw stack trace in the UI
 
@@ -65,11 +66,13 @@ deterministic code.
 
 1. Validate both files.
 2. Extract questions (deterministic parser; AI fallback only if the
-   document has no usable embedded text). The parser also picks up each
-   question's own printed marks allocation (`[5]`, `(10 marks)`, `[2M]`)
-   where present, a "Total Marks: 100" style header if the paper prints
-   one, and links `"5(a) OR 5(b)"`-style alternatives into a choice group
-   so only the attempted side ever counts toward the total.
+   document has no usable embedded text). Both paths pick up each
+   question's own printed marks allocation, a "Total Marks: 100" style
+   header if the paper prints one, and links whole alternative questions
+   separated by a printed "OR" into a shared choice group — e.g.
+   "Q1(a)+Q1(b) OR Q2(a)+Q2(b)" links all four sub-parts together, not
+   just the two adjacent to the "OR" — so only the attempted side ever
+   counts toward the total.
 3. Extract answers — one Gemini call over the full answer sheet (whether
    that's one PDF or several page images sent as ordered pages in the same
    call), returning transcribed text + normalized bounding boxes per region.
