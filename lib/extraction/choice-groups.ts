@@ -1,7 +1,7 @@
 import type { Question } from "@/types/assessment";
 
 /** The leading digit run of a label — "11(a)" and "11(b)" share base "11". */
-function baseNumber(number: string): string {
+export function baseNumber(number: string): string {
   return number.match(/^\d+/)?.[0] ?? number;
 }
 

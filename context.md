@@ -952,3 +952,63 @@ single-sub-part case, the no-OR case, and multiple independent choice
 pairs in one paper without cross-linking; plus AI-fallback shape-parity
 coverage in `extract-questions.test.ts`). Largest touched file: 98 lines
 (`question-parser.ts`).
+
+## Bug fix — total marks still wrong (right idea, wrong grouping granularity)
+
+Live-testing the previous fix against a real answer (see below) surfaced
+that it was still wrong — user's own words confirmed the exact rule: for
+a module's two alternative questions, you answer **one full question**
+(every one of its parts), and if a student answers both alternatives
+(against instructions but possible), **the higher-scoring full question**
+counts — not the higher-scoring single sub-part across all four.
+
+The previous `computeTotalMarks` grouped all four sub-parts of a module
+(1a, 1b, 2a, 2b) into one flat bucket and took `Math.max()` of individual
+sub-part marks — e.g. if 1(a)=5, 1(b)=4, that scored 5, not 9. Rewrote the
+grouping to be two-level: cluster by `choiceGroup` (unchanged), then
+within a cluster, split into "alternatives" and **sum each alternative's
+own parts** before comparing alternatives against each other. The
+tricky bit: two different real patterns land in the same `choiceGroup`
+shape and have to be told apart *within* `computeTotalMarks` itself:
+- "Q1(a)+Q1(b) OR Q2(a)+Q2(b)" (multiple base numbers in the cluster) —
+  each base's parts are summed into one alternative.
+- "5(a) OR 5(b)" (only one base number in the whole cluster) — each
+  sub-part is its own alternative, not summed with its sibling.
+
+Distinguishing them is a one-line check: count the distinct base numbers
+in the cluster. More than one → group-and-sum. Exactly one → each
+sub-part stands alone. This keeps both of the earlier (now-passing)
+`"5(a) OR 5(b)"` tests correct while fixing the real bug. Exported
+`baseNumber()` from `choice-groups.ts` (already had it internally) so
+`total-marks.ts` can reuse the identical definition rather than
+duplicating it.
+
+**Second issue in the same report**: "grading is not yet proper — it does
+not give grading for some question." Batched LLM calls can legitimately
+omit an item from their JSON response even when nothing is wrong with the
+request — `evaluateAssessment` previously had no way to notice or recover
+from that, silently leaving that question ungraded. Added one bounded
+retry: after the primary batched call, check which requested pairs didn't
+come back, and if any are missing, send exactly those (never the whole
+batch again) in a single follow-up call. Still at most 2 AI calls total
+for grading, not per-item retries — consistent with "minimize LLM calls."
+
+**Verification.** Live end-to-end run again with the real Gemini key
+against the same BCS515D-replica paper + a synthetic answer sheet
+answering one full question per module (5 pairs × 2 parts): every one of
+the 10 answered sub-parts got real marks and feedback in a single grading
+call (no retry even needed this time — confirms the resilience doesn't
+get in the way when nothing's actually missing), and the total came back
+as **51/100** — hand-verified by summing the ten individual marks shown
+on screen (5+4+5+4+8+4+5+6+4+6=51), exactly matching the badge and a new
+unit test (`"matches the real BCS515D paper..."`) built from the identical
+structure. This is the number that should have shown the very first time;
+the earlier "fix" was real progress (correctly detected `paperTotalMarks:
+100` and correctly excluded unanswered alternatives) but computed the
+*earned* side using the wrong grouping granularity.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test
+&& npm run build` all clean — **110 tests** (5 new: two whole-question-
+alternative cases and the full BCS515D-shaped scenario in
+`total-marks.test.ts`; two retry-behavior cases in `evaluate.test.ts`).
+Largest touched file: 92 lines (`total-marks.ts`).

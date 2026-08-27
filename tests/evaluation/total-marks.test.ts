@@ -66,4 +66,53 @@ describe("computeTotalMarks", () => {
 
     expect(computeTotalMarks(questions, evaluations, 100)).toEqual({ earned: 2, possible: 100 });
   });
+
+  it("sums a whole attempted alternative's own parts, not just its best single sub-part", () => {
+    // "Q1(a)+Q1(b) OR Q2(a)+Q2(b)" — a real university-paper pattern: you
+    // answer ONE FULL question (both its parts), not one sub-part of it.
+    const q1a = { ...question("1(a)"), maxMarks: 10, choiceGroup: "g1" };
+    const q1b = { ...question("1(b)"), maxMarks: 10, choiceGroup: "g1" };
+    const q2a = { ...question("2(a)"), maxMarks: 10, choiceGroup: "g1" };
+    const q2b = { ...question("2(b)"), maxMarks: 10, choiceGroup: "g1" };
+    // Student answered only Q1 (both parts) — Q2 wasn't attempted at all.
+    const evaluations = [evaluation("q-1(a)", 5, 10), evaluation("q-1(b)", 4, 10)];
+
+    expect(computeTotalMarks([q1a, q1b, q2a, q2b], evaluations)).toEqual({ earned: 9, possible: 20 });
+  });
+
+  it("picks the higher-scoring FULL alternative when both whole questions are answered", () => {
+    const q1a = { ...question("1(a)"), maxMarks: 10, choiceGroup: "g1" };
+    const q1b = { ...question("1(b)"), maxMarks: 10, choiceGroup: "g1" };
+    const q2a = { ...question("2(a)"), maxMarks: 10, choiceGroup: "g1" };
+    const q2b = { ...question("2(b)"), maxMarks: 10, choiceGroup: "g1" };
+    // Q1 totals 9 (5+4), Q2 totals 15 (8+7) — Q2 should win, not the
+    // single highest sub-part mark across all four.
+    const evaluations = [
+      evaluation("q-1(a)", 5, 10),
+      evaluation("q-1(b)", 4, 10),
+      evaluation("q-2(a)", 8, 10),
+      evaluation("q-2(b)", 7, 10),
+    ];
+
+    expect(computeTotalMarks([q1a, q1b, q2a, q2b], evaluations)).toEqual({ earned: 15, possible: 20 });
+  });
+
+  it("matches the real BCS515D paper: five independent module choices, only attempted sides count", () => {
+    const modules = [1, 3, 5, 7, 9].flatMap((n) => {
+      const group = `g${n}`;
+      return [
+        { ...question(`${n}(a)`), maxMarks: 10, choiceGroup: group },
+        { ...question(`${n}(b)`), maxMarks: 10, choiceGroup: group },
+        { ...question(`${n + 1}(a)`), maxMarks: 10, choiceGroup: group },
+        { ...question(`${n + 1}(b)`), maxMarks: 10, choiceGroup: group },
+      ];
+    });
+    // One full question answered per module (1, 3, 5, 7, 9 — not their pairs).
+    const evaluations = [1, 3, 5, 7, 9].flatMap((n) => [
+      evaluation(`q-${n}(a)`, 5, 10),
+      evaluation(`q-${n}(b)`, 4, 10),
+    ]);
+
+    expect(computeTotalMarks(modules, evaluations)).toEqual({ earned: 45, possible: 100 });
+  });
 });
