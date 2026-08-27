@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import type { AssessmentResult } from "@/types/assessment";
+import type { AssessmentResult, Evaluation } from "@/types/assessment";
 
 type AnswerSheetFile = { url: string; mimeType: string };
 type StoredState = { result: AssessmentResult | null; answerSheet: AnswerSheetFile | null };
@@ -9,7 +9,11 @@ type StoredState = { result: AssessmentResult | null; answerSheet: AnswerSheetFi
 const EMPTY_STATE: StoredState = { result: null, answerSheet: null };
 const STORAGE_KEY = "vedaai-assessment-result";
 
-type Store = { state: StoredState; setResult: (result: AssessmentResult, answerSheet: AnswerSheetFile) => void };
+type Store = {
+  state: StoredState;
+  setResult: (result: AssessmentResult, answerSheet: AnswerSheetFile) => void;
+  setEvaluations: (evaluations: Evaluation[]) => void;
+};
 const AssessmentContext = createContext<Store | null>(null);
 
 /**
@@ -34,8 +38,7 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setResult = (result: AssessmentResult, answerSheet: AnswerSheetFile) => {
-    setState({ result, answerSheet });
+  const persist = (result: AssessmentResult) => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(result));
     } catch {
@@ -43,8 +46,24 @@ export function AssessmentProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setResult = (result: AssessmentResult, answerSheet: AnswerSheetFile) => {
+    setState({ result, answerSheet });
+    persist(result);
+  };
+
+  const setEvaluations = (evaluations: Evaluation[]) => {
+    setState((prev) => {
+      if (!prev.result) return prev;
+      const result = { ...prev.result, evaluations };
+      persist(result);
+      return { ...prev, result };
+    });
+  };
+
   return (
-    <AssessmentContext.Provider value={{ state, setResult }}>{children}</AssessmentContext.Provider>
+    <AssessmentContext.Provider value={{ state, setResult, setEvaluations }}>
+      {children}
+    </AssessmentContext.Provider>
   );
 }
 

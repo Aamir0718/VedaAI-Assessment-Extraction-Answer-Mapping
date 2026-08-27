@@ -475,3 +475,60 @@ file: 92 lines (`app/assessment/page.tsx`).
 **Next:** Milestone 7 — Optional evaluation: `/api/evaluate`, wiring real
 `Evaluation[]` through to the `StatusPill`/`QuestionCard` slots already
 built for it this milestone.
+
+## Milestone 7 — Optional evaluation (done)
+
+- `lib/evaluation/evaluate.ts`: `evaluateAssessment()` builds the list of
+  gradable `{question, answer}` pairs — only questions with a confidently
+  *mapped* answer (`method !== "unmapped"`, both records actually exist) —
+  and makes exactly one batched `analyzer.evaluate()` call, same "never
+  per-item" discipline as the mapping fallback. Same defensive pattern as
+  `map-answers.ts` too: an AI-returned `questionId` that doesn't match one
+  of the pairs actually sent is dropped rather than trusted. 3 unit tests
+  with a mocked analyzer.
+- `app/api/evaluate/route.ts`: a genuinely separate endpoint from
+  `/api/process` — this is the one place the plan's "single endpoint"
+  guidance is deliberately not followed, because the spec requires grading
+  to be triggerable independently so it can never delay mapping/
+  highlighting. Validates its request body with a small Zod schema (real
+  external input this time, unlike the same-app-echoing-its-own-data
+  argument that applied loosely elsewhere) before calling
+  `evaluateAssessment`; logs the real error server-side, returns a generic
+  502 message to the client.
+- **On-demand, not automatic.** Considered auto-triggering grading the
+  moment results render (also satisfies "doesn't block mapping"), but
+  chose an explicit "Grade with AI" button instead
+  (`components/assessment/GradeButton.tsx` +
+  `lib/evaluation/use-evaluate-assessment.ts`) — grading is explicitly
+  optional per the spec, and an automatic AI call a teacher didn't ask for
+  is exactly the kind of unnecessary AI usage §6/§17 warn against. The
+  button becomes "✓ Graded with AI" once done; a failure shows inline
+  without touching the mapping/highlighting the teacher already has.
+- `lib/state/assessment-store.tsx`: added `setEvaluations()`, merging into
+  the existing result (and re-persisting to `sessionStorage`) rather than
+  a separate piece of state — keeps `AssessmentResult` as the one shape
+  the UI reads from, per the spec's own domain model.
+- `StatusPill`/`QuestionCard` needed no changes at all — Milestone 6 built
+  them to prefer `evaluation` (mark badge) over `mapping` (confidence
+  badge) whenever one exists; passing real evaluations through was enough
+  to light them up.
+
+**Verification.** Real end-to-end run again (not mocked): called
+`/api/process` then fed its actual output straight into `/api/evaluate` —
+got back real marks and feedback, including the AI correctly deducting
+marks on the incomplete Newton's-first-law answer with specific, accurate
+feedback about what was missing. Then drove the full browser flow through
+Playwright: uploaded → processed → clicked "Grade with AI" → confirmed the
+button flipped to "✓ Graded with AI", every mapped question's badge
+switched from a confidence pill to a real "`n`/10" mark, the unanswered
+question stayed correctly excluded, and the expanded card's "AI Feedback"
+section rendered the real text. Screenshotted for a final visual check.
+All temporary scripts and the `--no-save` Playwright install removed
+afterward.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test && npm run build`
+all clean (60 tests). Largest file: 96 lines (`app/assessment/page.tsx`).
+
+**Next:** Milestone 8 — Hardening: remaining edge cases, error-path tests,
+file-size audit, full README completion (Deployment/Limitations/Future
+Improvements sections), deployment readiness check, final push.

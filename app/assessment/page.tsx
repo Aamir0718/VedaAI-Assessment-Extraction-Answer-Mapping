@@ -9,6 +9,7 @@ import { QuestionAccordion } from "@/components/assessment/QuestionAccordion";
 import { UnmatchedAnswers } from "@/components/assessment/UnmatchedAnswers";
 import { AnswerSheetViewer } from "@/components/viewer/AnswerSheetViewer";
 import { ResultsTabs } from "@/components/assessment/ResultsTabs";
+import { GradeButton } from "@/components/assessment/GradeButton";
 
 type Selection = { kind: "question" | "answer"; id: string };
 
@@ -54,9 +55,12 @@ export default function AssessmentPage() {
       <ResultsTabs active={mobileTab} onChange={setMobileTab} />
       <main className="grid flex-1 md:grid-cols-[420px_1fr] md:divide-x">
         <div className={`overflow-auto p-4 ${mobileTab === "sheet" ? "hidden md:block" : ""}`}>
-          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Extracted questions ({questions.length})
-          </p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Extracted questions ({questions.length})
+            </p>
+            <GradeButton questions={questions} answers={answers} mappings={mappings} graded={evaluations.length > 0} />
+          </div>
           <QuestionAccordion
             questions={questions}
             answers={answers}

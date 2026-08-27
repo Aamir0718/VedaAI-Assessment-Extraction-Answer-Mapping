@@ -29,7 +29,7 @@ mapping-and-highlighting workflow.
       for genuinely ambiguous cases, never a silent drop
 - [x] Multi-page answer support with region-by-region navigation
 - [x] Click-a-question → jump-to-highlight results viewer
-- [ ] Optional async grading (marks + feedback)
+- [x] Optional async grading (marks + feedback)
 
 (Checklist fills in as milestones complete.)
 
