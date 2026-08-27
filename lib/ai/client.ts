@@ -13,7 +13,10 @@ function getModel() {
   const client = new GoogleGenerativeAI(apiKey);
   return client.getGenerativeModel({
     model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
-    generationConfig: { responseMimeType: "application/json" },
+    // temperature: 0 so extraction/mapping/grading are reproducible — the
+    // same paper and answer should score the same way every time, not
+    // sample a different grade on each click of "Grade with AI".
+    generationConfig: { responseMimeType: "application/json", temperature: 0 },
   });
 }
 
