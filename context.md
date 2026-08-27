@@ -133,3 +133,57 @@ all clean. 19 tests passing across 5 files. Largest new file is 66 lines
 **Next:** Milestone 3 — deterministic answer mapping (`lib/mapping/`):
 label normalization, explicit/normalized matching, positional fallback,
 batched AI semantic fallback, confidence model, full edge-case test corpus.
+
+## Milestone 3 — Mapping (done)
+
+- `lib/mapping/normalize-label.ts`: canonicalizes a label to a comparable
+  key — `"11(a)"`, `"11 (a)"`, `"Q11(a)"`, `"Q11 (a)"`, `"11.a"` all reduce
+  to `"11a"`; roman-numeral sub-parts (`"12(i)"` vs `"12(ii)"`) stay
+  distinct. Pure regex, no AI.
+- `lib/mapping/explicit-match.ts`: tries an exact string match against
+  `Question.number` first (method `"explicit-label"`, confidence 0.98),
+  then normalized-label equivalence (method `"normalized-label"`,
+  confidence 0.9). Returns `null` — never a guess — when nothing matches.
+- `lib/mapping/positional-fallback.ts`: a deliberately narrow deterministic
+  heuristic for "wrote every answer in order, never labelled any of them."
+  It only pairs unlabeled answers with remaining unmapped questions
+  (printed order) when the two counts match *exactly* — if they don't,
+  positional order alone isn't trustworthy (e.g. a genuinely unanswered
+  question sitting among unlabeled answers would silently shift everything
+  after it), so those answers are deliberately left for the AI semantic
+  step instead of guessing. This was the one real design call in this
+  milestone: a naive index-based positional matcher would have been wrong
+  exactly in the cases the spec calls out as required (unanswered
+  questions, out-of-order/unmatched answers), so it's scoped to the case
+  it can actually get right for free.
+- `lib/mapping/map-answers.ts`: the pure orchestrator. Priority order per
+  answer: explicit → normalized → positional (count-matched) → batched AI
+  semantic call for whatever's left. Two reliability details worth noting:
+  (1) every answer gets exactly one `AnswerMapping` — the AI-fallback loop
+  always emits a mapping (`"unmapped"` if the model didn't resolve it),
+  matching "never silently discard an unmatched answer"; (2) an AI-returned
+  `questionId` is validated against the actual remaining candidate set
+  before being trusted — a hallucinated id that doesn't exist becomes
+  `"unmapped"` rather than corrupting a mapping. Schema validation upstream
+  only checks *shape*; this checks *correctness*.
+- `lib/mapping/mapping-status.ts`: two tiny derived-state helpers,
+  `getUnansweredQuestions` (questions with no mapped answer) and
+  `getUnmappedAnswers` (answers whose mapping method is `"unmapped"`) —
+  these back the "Identify Unanswered / Unmapped" pipeline stage and the
+  results UI's ○/⚠/✕ status icons.
+- Full edge-case test corpus per the spec's exact `tests/` layout —
+  `basic/`, `out-of-order/`, `subquestions/`, `unanswered/`, `unmatched/`,
+  `multi-page/`, `ambiguous/` — each exercising `mapAnswers` end to end
+  with mocked `Question[]`/`Answer[]` fixtures (`tests/fixtures/mapping-
+  fixtures.ts`) and a mocked `resolveAmbiguousMappings`, zero network
+  calls. Plus direct unit tests for `normalizeLabel`, `explicitMatch`, and
+  `positionalFallback` in `tests/mapping/`. 41 tests total across the repo.
+- One test-writing gotcha: Vitest's `toMatchObject({ questionId: undefined })`
+  does not match an object where the key is simply absent — had to assert
+  `.questionId` is `undefined` via direct property access instead.
+
+**Verification:** `npm run typecheck && npm run lint && npm run test && npm run build`
+all clean. Largest file in the mapping module is 68 lines (`map-answers.ts`).
+
+**Next:** Milestone 4 — Viewer: `lib/pdf/coordinates.ts` (+tests), PDF
+rendering with `react-pdf`, highlight overlay, multi-region navigation.
