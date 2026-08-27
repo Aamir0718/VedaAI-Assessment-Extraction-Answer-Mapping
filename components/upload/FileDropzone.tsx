@@ -61,15 +61,15 @@ export function FileDropzone({ noun, accept, file, onSelect }: Props) {
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-        className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition ${
+        className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition-all duration-200 active:scale-[0.98] ${
           isDragging
-            ? "border-orange-400 bg-orange-50"
+            ? "scale-[1.02] border-orange-400 bg-orange-50 shadow-lg shadow-orange-100"
             : error
               ? "border-red-200"
-              : "border-neutral-200 hover:border-orange-300 hover:bg-neutral-50"
+              : "border-neutral-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/40 hover:shadow-md"
         }`}
       >
-        <span className="flex size-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 transition-transform duration-200 group-hover:scale-110 group-hover:bg-orange-100 group-hover:text-orange-600">
           <Upload className="size-5" aria-hidden />
         </span>
         <p className="text-sm font-medium text-neutral-800">

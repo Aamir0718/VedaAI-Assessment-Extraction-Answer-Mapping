@@ -11,7 +11,11 @@ export function GradeButton({ questions, answers, mappings, graded }: Props) {
   const { grade, isGrading, error } = useEvaluateAssessment();
 
   if (graded) {
-    return <p className="px-1 text-xs font-medium text-emerald-600">✓ Graded with AI</p>;
+    return (
+      <p className="animate-fade-up flex items-center gap-1 px-1 text-xs font-medium text-emerald-600">
+        <Sparkles className="size-3.5" aria-hidden /> Graded with AI
+      </p>
+    );
   }
 
   return (
@@ -20,9 +24,9 @@ export function GradeButton({ questions, answers, mappings, graded }: Props) {
         type="button"
         onClick={() => grade(questions, answers, mappings)}
         disabled={isGrading}
-        className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-medium text-orange-700 transition hover:bg-orange-100 disabled:opacity-50"
+        className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-1.5 text-xs font-medium text-orange-700 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-sm active:translate-y-0 active:scale-95 disabled:cursor-wait disabled:opacity-70"
       >
-        <Sparkles className={`size-3.5 ${isGrading ? "animate-pulse" : ""}`} aria-hidden />
+        <Sparkles className={`size-3.5 ${isGrading ? "animate-spin-slow" : ""}`} aria-hidden />
         {isGrading ? "Grading…" : "Grade with AI"}
       </button>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}

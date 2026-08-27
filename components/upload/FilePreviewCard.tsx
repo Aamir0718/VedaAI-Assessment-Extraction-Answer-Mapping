@@ -12,8 +12,8 @@ export function FilePreviewCard({ file, pageCount, onRemove }: Props) {
   const detail = pageCount ? `${formatSize(file.size)} • ${pageCount} page${pageCount === 1 ? "" : "s"}` : formatSize(file.size);
 
   return (
-    <div className="group relative flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left shadow-sm">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
+    <div className="animate-fade-up group relative flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-left shadow-sm transition-shadow hover:shadow-md">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-100 to-orange-50 text-orange-600">
         <FileText className="size-5" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">

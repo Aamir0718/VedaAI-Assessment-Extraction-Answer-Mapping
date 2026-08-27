@@ -25,8 +25,10 @@ export function UnmatchedAnswers({ answers, mappings, selectedAnswerId, onSelect
             key={a.id}
             type="button"
             onClick={() => onSelect(a.id)}
-            className={`flex w-full items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-left text-sm transition ${
-              a.id === selectedAnswerId ? "border-orange-300 shadow-sm" : "border-neutral-200 hover:border-neutral-300"
+            className={`flex w-full items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-left text-sm transition-all duration-200 ${
+              a.id === selectedAnswerId
+                ? "border-orange-300 shadow-md"
+                : "border-neutral-200 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm"
             }`}
           >
             <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">

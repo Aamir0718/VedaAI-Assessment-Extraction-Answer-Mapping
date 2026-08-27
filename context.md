@@ -615,3 +615,41 @@ deterministic-first mapping with confidence, click-to-highlight across
 multi-page answers, unanswered/unmatched states surfaced (never hidden),
 optional AI grading, real stage-by-stage progress, and graceful error
 handling throughout — verified with real Gemini calls, not just mocks.
+
+## Post-milestone design pass — de-branding + visual polish
+
+After running the finished app, the user gave direct feedback: don't
+mention "VedaAI" anywhere in the UI, and the design read as generic —
+wanted better typography and more interactivity.
+
+- **Removed all "VedaAI" text from the UI.** `AppHeader` now shows an
+  icon-only mark (gradient rounded square, sparkle icon) with no product
+  name — didn't invent a replacement brand name unasked, since the request
+  was to drop the mention, not rename it to something else. Also updated
+  the browser-tab title (`app/layout.tsx` metadata) to a plain functional
+  description. Grepped the whole `.ts`/`.tsx` tree afterward to confirm
+  zero remaining matches. Left the README's title and repo/package name
+  untouched — those describe the assignment/repo itself, not the running
+  app the user was looking at, which is what the feedback was about.
+- **Font pairing**: replaced the default Geist Sans/Mono with Sora
+  (`font-display` — headings, hero text) and Plus Jakarta Sans (body/UI
+  text), both via `next/font/google`. A deliberately more characterful,
+  less "every Next.js starter looks like this" pairing, while keeping
+  Jakarta's readability for dense question/answer text.
+- **Motion and interactivity**, added consistently rather than piecemeal:
+  a slow-spinning dashed ring + gradient badge behind the hero icons on
+  the upload/processing screens, a soft blurred gradient background wash,
+  hover-lift + shadow on every interactive card/button (dropzones, file
+  previews, question cards, the grade button), press feedback
+  (`active:scale-95`-style) on buttons, a smooth CSS-grid-based accordion
+  expand/collapse on `QuestionCard` (swapped from instant show/hide, which
+  doesn't animate), and the active processing stage now gets a highlighted
+  row background instead of just a bigger dot.
+- Verified visually via the same headless-Chromium screenshot approach as
+  every prior milestone (upload empty/filled, button hover state,
+  mid-processing, full results) against the already-running dev server —
+  zero console errors, hot-reload picked up every change live. All three
+  screens confirmed to no longer mention "VedaAI" anywhere.
+
+**Verification:** `npm run typecheck && npm run lint && npm run test &&
+npm run build` all clean, 71 tests unaffected (UI-only change set).

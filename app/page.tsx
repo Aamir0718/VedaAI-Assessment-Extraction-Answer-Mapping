@@ -20,11 +20,12 @@ export default function UploadPage() {
 
   if (isProcessing || stages.length > 0) {
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        <BackgroundGlow />
         <AppHeader />
-        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 p-8">
+        <main className="relative mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-6 p-8">
           <ProcessingHero />
-          <div className="w-full rounded-2xl border border-neutral-100 bg-white p-5 shadow-sm">
+          <div className="animate-fade-up w-full rounded-2xl border border-neutral-100 bg-white/90 p-5 shadow-sm backdrop-blur">
             <StageList received={stages} />
           </div>
           {error && <p className="text-center text-sm text-red-600">{error}</p>}
@@ -34,10 +35,11 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col bg-neutral-50">
+    <div className="relative flex flex-1 flex-col overflow-hidden bg-neutral-50">
+      <BackgroundGlow />
       <AppHeader />
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 p-6">
-        <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-8">
+      <main className="relative mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 p-6">
+        <div className="animate-fade-up rounded-2xl border border-neutral-200 bg-white/95 p-6 shadow-sm backdrop-blur sm:p-8">
           <UploadHero />
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <FileDropzone noun="Question Paper" accept={ACCEPT} file={questionPaper} onSelect={setQuestionPaper} />
@@ -52,7 +54,7 @@ export default function UploadPage() {
             type="button"
             disabled={!isReady}
             onClick={() => questionPaper && answerSheet && submit(questionPaper, answerSheet)}
-            className="group flex items-center gap-2 rounded-full bg-neutral-900 px-6 py-2.5 text-sm font-medium text-white transition enabled:hover:bg-neutral-700 enabled:hover:shadow-md disabled:cursor-not-allowed disabled:opacity-30"
+            className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-2.5 text-sm font-medium text-white transition-all duration-200 enabled:hover:-translate-y-0.5 enabled:hover:shadow-lg enabled:hover:shadow-orange-200 enabled:active:translate-y-0 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
           >
             Process Assessment
             <ArrowRight className="size-4 transition group-enabled:group-hover:translate-x-0.5" aria-hidden />
@@ -62,6 +64,15 @@ export default function UploadPage() {
           </p>
         </div>
       </main>
+    </div>
+  );
+}
+
+/** A soft, decorative gradient wash — purely visual, sits behind everything. */
+function BackgroundGlow() {
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      <div className="absolute -top-32 left-1/2 size-[36rem] -translate-x-1/2 rounded-full bg-gradient-to-br from-orange-100 via-amber-50 to-transparent opacity-70 blur-3xl" />
     </div>
   );
 }

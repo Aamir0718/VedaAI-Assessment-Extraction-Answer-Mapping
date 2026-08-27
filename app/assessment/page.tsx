@@ -46,7 +46,7 @@ export default function AssessmentPage() {
     <div className="flex flex-1 flex-col">
       <AppHeader />
       <ResultsTabs active={mobileTab} onChange={setMobileTab} />
-      <main className="grid flex-1 md:grid-cols-[420px_1fr] md:divide-x">
+      <main className="animate-fade-up grid flex-1 md:grid-cols-[420px_1fr] md:divide-x">
         <div className={`overflow-auto p-4 ${mobileTab === "sheet" ? "hidden md:block" : ""}`}>
           <div className="mb-3 flex items-center justify-between">
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">

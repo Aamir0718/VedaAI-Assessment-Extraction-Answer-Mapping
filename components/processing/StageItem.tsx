@@ -4,13 +4,17 @@ type Status = "done" | "active" | "pending";
 
 export function StageItem({ label, status }: { label: string; status: Status }) {
   return (
-    <li className="flex items-center gap-3">
+    <li
+      className={`flex items-center gap-3 rounded-lg px-1.5 py-1 transition-colors duration-300 ${
+        status === "active" ? "bg-orange-50" : ""
+      }`}
+    >
       <span
-        className={`flex size-5 shrink-0 items-center justify-center rounded-full ${
+        className={`flex size-5 shrink-0 scale-100 items-center justify-center rounded-full transition-transform duration-300 ${
           status === "done"
             ? "bg-emerald-500 text-white"
             : status === "active"
-              ? "bg-orange-500 text-white"
+              ? "scale-110 bg-orange-500 text-white"
               : "bg-neutral-100 text-neutral-300"
         }`}
       >
