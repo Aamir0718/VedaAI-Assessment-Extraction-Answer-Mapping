@@ -47,6 +47,11 @@ describe("extractPdfPageText", () => {
     expect(lines[0]).toContain("capital of France");
     expect(lines[1]).toContain("Define photosynthesis");
   });
+
+  it("rejects a corrupt/non-PDF buffer instead of hanging or crashing the process", async () => {
+    const garbage = Buffer.from("this is not a pdf file at all, just plain bytes");
+    await expect(extractPdfPageText(garbage)).rejects.toBeTruthy();
+  });
 });
 
 describe("joinTextItems", () => {

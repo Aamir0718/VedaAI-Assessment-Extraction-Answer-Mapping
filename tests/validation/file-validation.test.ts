@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { validateFile, type FileInput } from "@/lib/validation/file-validation";
+import { validateFile, validateFileMeta, type FileInput } from "@/lib/validation/file-validation";
 
 function file(overrides: Partial<FileInput> = {}): FileInput {
   return {
@@ -45,5 +45,17 @@ describe("validateFile", () => {
     process.env.MAX_FILE_SIZE_MB = "1";
     const smallEnough = Buffer.alloc(512 * 1024);
     expect(validateFile(file({ buffer: smallEnough })).valid).toBe(true);
+  });
+});
+
+describe("validateFileMeta", () => {
+  it("applies the same rules using only type/size/name — no bytes needed", () => {
+    expect(validateFileMeta({ type: "application/pdf", size: 1024, name: "a.pdf" })).toEqual({
+      valid: true,
+    });
+    expect(validateFileMeta({ type: "application/msword", size: 1024, name: "a.doc" }).valid).toBe(
+      false
+    );
+    expect(validateFileMeta({ type: "application/pdf", size: 0, name: "a.pdf" }).valid).toBe(false);
   });
 });

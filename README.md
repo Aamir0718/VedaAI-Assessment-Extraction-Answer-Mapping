@@ -15,8 +15,10 @@ handwritten student answer sheet (PDF or images), then automatically:
 Grading/feedback is an optional, secondary step that never blocks the core
 mapping-and-highlighting workflow.
 
-> Status: under active development, built milestone by milestone. See
-> [context.md](./context.md) for a running log of what's done.
+> Status: feature-complete, built milestone by milestone. See
+> [context.md](./context.md) for the full running log — including three
+> real bugs found only by actually running the app end to end with a live
+> Gemini key, not by reading the code.
 
 ## Features
 
@@ -30,8 +32,8 @@ mapping-and-highlighting workflow.
 - [x] Multi-page answer support with region-by-region navigation
 - [x] Click-a-question → jump-to-highlight results viewer
 - [x] Optional async grading (marks + feedback)
-
-(Checklist fills in as milestones complete.)
+- [x] Graceful error states — invalid files, corrupt PDFs, AI failures, zero
+      questions/answers found — never a raw stack trace in the UI
 
 ## Architecture
 
@@ -92,16 +94,26 @@ kept out of React components entirely.
 
 ## Edge Cases
 
-Covered by the test corpus in `tests/`: sequential answers, out-of-order
-answers, sub-questions (`11(a)`/`11(b)`), unanswered questions, unmatched
-answers, multi-page answers, missing question labels, ambiguous mappings,
-and coordinate conversion.
+`tests/` mirrors the spec's own list, one folder per case — `basic/`,
+`out-of-order/`, `subquestions/`, `unanswered/`, `unmatched/`,
+`multi-page/`, `ambiguous/` — each exercising `mapAnswers` end to end with
+mocked `Question[]`/`Answer[]` fixtures, no network call. Plus:
+missing/unrecognizable question labels (`extract-questions.test.ts`),
+a corrupt/non-PDF upload (`pdf-text.test.ts`), and never leaking a raw
+error message to the teacher (`to-friendly-message.test.ts`).
 
 ## Performance Decisions
 
-One extraction pass per document, batched AI calls for mapping fallback and
-grading, streamed progress instead of polling — see the plan for the full
-list of tradeoffs.
+- One extraction pass per document — the question paper is read once, the
+  answer sheet is sent to Gemini once, never re-sent per question.
+- Mapping's AI fallback and grading are each a single batched call over
+  every remaining item, not one call per answer/question.
+- Deterministic parsing is tried before AI on the question paper, since
+  it's usually printed text — AI is a fallback, not the default path.
+- Processing streams stage events over one HTTP response instead of
+  polling, so the UI shows real progress without extra round-trips.
+- Grading is opt-in (a button), not automatic on results load — an AI call
+  the teacher didn't ask for is a latency/cost hit with no upside.
 
 ## Tech Stack
 
@@ -137,18 +149,68 @@ npm run lint
 npm run test
 ```
 
-Mapping, parsing, and coordinate logic are unit-tested without any network
-call (mocked AI output).
+70+ tests. Mapping, parsing, coordinate conversion, error-message mapping,
+and orchestration are all unit-tested with mocked AI output — none of it
+needs a network call or an API key to run. The one thing that genuinely
+can't be unit-tested is real handwriting-recognition quality; that's been
+verified manually (see `context.md`'s Milestone 5–7 entries) with a real
+Gemini key against synthetic fixtures, not part of the automated suite.
 
 ## Deployment
 
-Deployable as a standard Next.js app (e.g. Vercel). Details finalized in
-the hardening milestone.
+Works as a standard Next.js app on Vercel (or any Node.js host):
+
+1. Push to GitHub, import the repo in Vercel.
+2. Set `GEMINI_API_KEY` (required) in the project's environment variables.
+   `GEMINI_MODEL`/`MAX_FILE_SIZE_MB` are optional — see `.env.example`.
+3. Deploy. No database, no other infrastructure to provision.
+
+Two things specific to this app worth knowing before deploying:
+
+- `/api/process` and `/api/evaluate` both declare `export const runtime = "nodejs"`
+  (they use `Buffer`/`pdfjs-dist`, not Edge-compatible) and a `maxDuration`
+  — 60s and 30s respectively. Vercel's Hobby tier caps function duration
+  lower than that; raise the tier or lower `maxDuration` to match your plan
+  if a large document times out.
+- `lib/extraction/pdf-text.ts` resolves its pdfjs worker/font-data paths
+  with `path.join(process.cwd(), ...)` rather than a static import, which
+  a serverless bundler's file tracer can miss. `next.config.ts` explicitly
+  force-includes those files via `outputFileTracingIncludes` for exactly
+  this reason — if pdfjs ever throws a "worker not found"-style error only
+  in production, that's the first thing to check.
 
 ## Limitations
 
-Documented as they're discovered — see `context.md`.
+- **Handwriting quality depends on Gemini's OCR**, same as any AI-based
+  approach — very messy handwriting will transcribe imperfectly. The
+  system surfaces uncertainty (confidence, "Needs review", "Unmatched")
+  rather than hiding it, but it can't fix a genuinely illegible scan.
+- **One file per document.** A multi-page handwritten answer sheet is
+  expected as a single PDF scan (or a single image for a one-page sheet),
+  not multiple separate image files stitched into one submission.
+- **A hard refresh on the results page loses the answer-sheet preview.**
+  The `AssessmentResult` itself survives (mirrored to `sessionStorage`),
+  but the uploaded file's blob URL doesn't — there's no server-side file
+  storage by design (no database, per the spec), so the viewer asks for a
+  re-upload rather than silently showing nothing.
+- **No persistence across sessions or devices.** Everything lives in the
+  browser tab for the current session; closing the tab loses the result
+  entirely. This is a deliberate tradeoff for a no-database, no-auth
+  assignment scope, not an oversight.
+- **Positional-fallback mapping** (unlabeled answers matched to remaining
+  questions by order) only fires when the unlabeled-answer count exactly
+  matches the remaining-question count — by design, not a bug: see
+  `lib/mapping/positional-fallback.ts` for why a looser heuristic would
+  risk silently mismatching answers around a genuinely unanswered question.
 
 ## Future Improvements
 
-TBD.
+- Support a multi-image answer sheet (several photographed pages as one
+  submission) rather than requiring a single PDF/image.
+- Persist results server-side (still without a full database — e.g. a
+  short-lived signed URL or object storage) so a results link can be
+  reopened later or shared, instead of living only in the browser tab.
+- Let the teacher nudge a low-confidence or unmatched mapping by hand
+  (drag an answer onto the right question) rather than only reviewing it.
+- Batch-process multiple students' answer sheets against the same question
+  paper in one session.

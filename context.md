@@ -532,3 +532,86 @@ all clean (60 tests). Largest file: 96 lines (`app/assessment/page.tsx`).
 **Next:** Milestone 8 — Hardening: remaining edge cases, error-path tests,
 file-size audit, full README completion (Deployment/Limitations/Future
 Improvements sections), deployment readiness check, final push.
+
+## Milestone 8 — Hardening (done)
+
+- **Empty states, not silent gaps.** `questions.length === 0` (question
+  paper genuinely yielded nothing, even after the AI fallback) now shows a
+  real `EmptyResultsState` instead of an empty accordion; `answers.length
+  === 0` shows an inline banner above the question list rather than
+  leaving the teacher to notice every question says "Unanswered" and
+  wonder why. Neither is an error — both are legitimate outcomes the spec
+  explicitly asks to handle gracefully.
+- **Instant client-side file validation.** Previously type/size checks
+  only ran server-side in `/api/process`, so a rejected file only showed
+  an error after a round-trip. Refactored `file-validation.ts` to share
+  its rule logic between the existing byte-accurate `validateFile`
+  (server) and a new metadata-only `validateFileMeta` (client — `File.size`/
+  `File.type` are available synchronously, no bytes read) so `FileDropzone`
+  can reject immediately on selection. The server check stays authoritative;
+  this only makes the common case feel instant. Verified in-browser that a
+  disallowed file type is rejected with no console error (had a specific
+  concern here: does referencing `process.env.MAX_FILE_SIZE_MB` from
+  client-shared code crash in the browser? No — Next.js's client bundle
+  quietly resolves any non-`NEXT_PUBLIC_` env read to `undefined` rather
+  than throwing, so the shared `maxFileSizeBytes()` helper safely falls
+  back to the default on the client. Confirmed empirically, not just
+  assumed.)
+- **Deployment-readiness fix, found by reasoning about the deploy target,
+  not by deploying.** `lib/extraction/pdf-text.ts` resolves its pdfjs
+  worker/standard-fonts paths via `path.join(process.cwd(), ...)` — a
+  dynamic string, not a static `import`/`require` a serverless bundler's
+  file tracer can follow. On Vercel this could silently ship a function
+  missing those files even though it builds and runs fine locally (full
+  `node_modules` on disk). Added explicit `outputFileTracingIncludes` for
+  `/api/process` in `next.config.ts` naming both paths — a standard,
+  low-risk safeguard for exactly this "dynamically-required file" gap.
+  Couldn't fully verify Vercel's own tracer behavior without an actual
+  deploy, so documented the reasoning and the fix in the README rather
+  than silently trusting it.
+- **More edge-case tests**, each targeting a real corner rather than
+  padding the count: a corrupt/non-PDF buffer through
+  `extractPdfPageText` (confirmed pdfjs's real thrown message —
+  `InvalidPDFException: "Invalid PDF structure."` — actually matches
+  `toFriendlyMessage`'s regex, not just assumed it would); direct tests
+  for `toFriendlyMessage` covering the AI-error path, the corrupt/
+  password-protected-PDF path, the generic fallback (asserting the raw
+  error text like a stack trace or connection detail never leaks through),
+  and a non-`Error` thrown value; `validateFileMeta` parity tests.
+- **Small refactor for clarity, not just to hit a line count**:
+  `app/assessment/page.tsx` had grown to 111 lines after the empty-state
+  additions. Pulled out `resolveSelection()` (the mapping/answer
+  derivation logic) into `lib/assessment/resolve-selection.ts` — now
+  independently unit-tested (4 tests) without needing React at all — and
+  extracted `NoResultsState`/`ViewerEmptyState` as small reusable
+  components. Back down to 93 lines.
+- Added `.gitattributes` (`* text=auto eol=lf`) — the repo had been
+  accumulating "LF will be replaced by CRLF" warnings on every `git add`
+  all session; confirmed via `git add --renormalize .` that every already-
+  committed file was already LF-normalized (the warnings were purely a
+  Windows checkout artifact), so this was a safe, no-diff addition.
+- README: completed Deployment (concrete Vercel steps, the two deploy-
+  specific gotchas above), Limitations (handwriting-quality dependency,
+  single-file-per-document scope, no cross-session persistence, the
+  positional-fallback count-match design choice), and Future Improvements
+  sections. Updated Edge Cases/Performance Decisions to describe what's
+  actually built rather than pointing at an external plan file.
+
+**Verification.** Full real run one more time after all of the above —
+same headless-Chromium flow as every prior milestone, this time confirming
+the page-2 refactor (extracted `resolveSelection`) didn't change any
+observable behavior: question switching, highlight movement, and grading
+all still worked identically, zero console errors. `npm run typecheck &&
+npm run lint && npm run test && npm run build` all clean — **71 tests**,
+21 test files. Full-repo file-size sweep: largest source file is 93 lines
+(`app/assessment/page.tsx`); total source is ~2,160 lines across the whole
+app. All temporary verification scripts and the repeated `--no-save`
+Playwright installs removed; `package.json`/`package-lock.json` confirmed
+untouched by them (`git diff --stat` empty).
+
+**Status: all 8 milestones complete.** The application satisfies the
+spec's full Definition of Done (§29) — question/answer extraction,
+deterministic-first mapping with confidence, click-to-highlight across
+multi-page answers, unanswered/unmatched states surfaced (never hidden),
+optional AI grading, real stage-by-stage progress, and graceful error
+handling throughout — verified with real Gemini calls, not just mocks.

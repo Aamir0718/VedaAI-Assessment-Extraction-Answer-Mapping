@@ -1,23 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { FileQuestion } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useAssessmentStore } from "@/lib/state/assessment-store";
+import { resolveSelection, type Selection } from "@/lib/assessment/resolve-selection";
 import { QuestionAccordion } from "@/components/assessment/QuestionAccordion";
 import { UnmatchedAnswers } from "@/components/assessment/UnmatchedAnswers";
 import { AnswerSheetViewer } from "@/components/viewer/AnswerSheetViewer";
+import { ViewerEmptyState } from "@/components/viewer/ViewerEmptyState";
 import { ResultsTabs } from "@/components/assessment/ResultsTabs";
 import { GradeButton } from "@/components/assessment/GradeButton";
-
-type Selection = { kind: "question" | "answer"; id: string };
+import { EmptyResultsState } from "@/components/assessment/EmptyResultsState";
+import { NoResultsState } from "@/components/assessment/NoResultsState";
 
 export default function AssessmentPage() {
-  const router = useRouter();
   const { state } = useAssessmentStore();
   const firstQuestionId = state.result?.questions[0]?.id;
-  const [selection, setSelection] = useState<Selection | null>(
+  const [selection, setSelection] = useState<Selection>(
     firstQuestionId ? { kind: "question", id: firstQuestionId } : null
   );
   const [mobileTab, setMobileTab] = useState<"questions" | "sheet">("questions");
@@ -26,28 +25,22 @@ export default function AssessmentPage() {
     return (
       <div className="flex flex-1 flex-col">
         <AppHeader />
-        <main className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-          <FileQuestion className="size-10 text-neutral-300" aria-hidden />
-          <p className="text-sm text-neutral-500">No assessment results yet.</p>
-          <button type="button" onClick={() => router.push("/")} className="text-sm font-medium text-orange-600 underline">
-            Upload documents
-          </button>
-        </main>
+        <NoResultsState />
       </div>
     );
   }
 
   const { questions, answers, mappings, evaluations = [] } = state.result;
-  const mapping =
-    selection?.kind === "question"
-      ? mappings.find((m) => m.questionId === selection.id) ?? null
-      : selection
-        ? mappings.find((m) => m.answerId === selection.id) ?? null
-        : null;
-  const answer =
-    selection?.kind === "answer"
-      ? answers.find((a) => a.id === selection.id) ?? null
-      : answers.find((a) => a.id === mapping?.answerId) ?? null;
+  if (questions.length === 0) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <AppHeader />
+        <EmptyResultsState />
+      </div>
+    );
+  }
+
+  const { answer } = resolveSelection(selection, mappings, answers);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -61,6 +54,11 @@ export default function AssessmentPage() {
             </p>
             <GradeButton questions={questions} answers={answers} mappings={mappings} graded={evaluations.length > 0} />
           </div>
+          {answers.length === 0 && (
+            <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              No answers were detected on the uploaded answer sheet — every question is shown as unanswered.
+            </p>
+          )}
           <QuestionAccordion
             questions={questions}
             answers={answers}
@@ -80,14 +78,13 @@ export default function AssessmentPage() {
           {state.answerSheet && answer ? (
             <AnswerSheetViewer file={state.answerSheet} regions={answer.regions} />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-              <FileQuestion className="size-8 text-neutral-300" aria-hidden />
-              <p className="max-w-xs text-sm text-neutral-400">
-                {state.answerSheet
+            <ViewerEmptyState
+              message={
+                state.answerSheet
                   ? "No answer to display for this question."
-                  : "Answer sheet not available — please re-upload to view highlights."}
-              </p>
-            </div>
+                  : "Answer sheet not available — please re-upload to view highlights."
+              }
+            />
           )}
         </div>
       </main>

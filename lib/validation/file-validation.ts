@@ -25,24 +25,40 @@ export type FileValidationResult =
   | { valid: true }
   | { valid: false; error: string };
 
-/** Deterministic, dependency-free validation — no AI, no I/O. */
-export function validateFile(file: FileInput): FileValidationResult {
-  if (file.buffer.byteLength === 0) {
+type FileMeta = { type: string; size: number; name: string };
+
+/** Shared by the server check (below) and the client pre-check — metadata only, no bytes. */
+function validateMeta(file: FileMeta): FileValidationResult {
+  if (file.size === 0) {
     return { valid: false, error: `"${file.name}" is empty.` };
   }
 
-  if (!ALLOWED_MIME_TYPES.includes(file.mimeType as (typeof ALLOWED_MIME_TYPES)[number])) {
+  if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
     return {
       valid: false,
-      error: `"${file.name}" has an unsupported file type (${file.mimeType}). Upload a PDF, PNG, JPEG, or WebP.`,
+      error: `"${file.name}" has an unsupported file type (${file.type}). Upload a PDF, PNG, JPEG, or WebP.`,
     };
   }
 
   const max = maxFileSizeBytes();
-  if (file.buffer.byteLength > max) {
+  if (file.size > max) {
     const maxMb = Math.round(max / (1024 * 1024));
     return { valid: false, error: `"${file.name}" exceeds the ${maxMb}MB size limit.` };
   }
 
   return { valid: true };
+}
+
+/** Deterministic, dependency-free validation — no AI, no I/O. Authoritative check, run server-side. */
+export function validateFile(file: FileInput): FileValidationResult {
+  return validateMeta({ type: file.mimeType, size: file.buffer.byteLength, name: file.name });
+}
+
+/**
+ * Same rules, usable directly against a browser File's metadata (no bytes
+ * read) for instant feedback on selection — the server still re-validates
+ * authoritatively, this only makes the common case feel instant.
+ */
+export function validateFileMeta(file: FileMeta): FileValidationResult {
+  return validateMeta(file);
 }

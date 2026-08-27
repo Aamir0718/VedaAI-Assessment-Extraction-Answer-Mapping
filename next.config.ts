@@ -8,6 +8,17 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // lib/extraction/pdf-text.ts resolves its pdfjs worker/font-data paths
+  // dynamically (path.join(process.cwd(), ...)), not via a static
+  // import/require Next's file tracer can follow — so on a serverless
+  // deploy those files could be silently left out of the function bundle.
+  // Force-include them explicitly for the route that uses them.
+  outputFileTracingIncludes: {
+    "/api/process": [
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      "./node_modules/pdfjs-dist/standard_fonts/**",
+    ],
+  },
 };
 
 export default nextConfig;

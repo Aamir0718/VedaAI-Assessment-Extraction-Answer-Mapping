@@ -1,0 +1,10 @@
+# Normalize line endings to LF in the repository regardless of the
+# checkout platform's default, so Windows/macOS/Linux contributors don't
+# see spurious whole-file diffs from line-ending churn.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
