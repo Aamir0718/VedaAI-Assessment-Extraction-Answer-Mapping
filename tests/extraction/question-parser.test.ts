@@ -77,4 +77,29 @@ describe("parseQuestions", () => {
     const result = parseQuestions(text);
     expect(result.map((q) => q.number)).toEqual(["1", "2", "3"]);
   });
+
+  it("picks up each question's own printed marks, not a generic default", () => {
+    const text = `
+      1. What is the capital of France? [2]
+      2. Define photosynthesis. (5 marks)
+      3. Solve for x: 2x + 4 = 10
+    `;
+    const result = parseQuestions(text);
+    expect(result[0]).toMatchObject({ text: "What is the capital of France?", maxMarks: 2 });
+    expect(result[1]).toMatchObject({ text: "Define photosynthesis.", maxMarks: 5 });
+    expect(result[2].maxMarks).toBeUndefined(); // no annotation printed — left for the grading fallback
+  });
+
+  it("extracts marks after continuation lines are fully assembled", () => {
+    const text = `
+      1. This question spans
+      multiple lines before its marks. [4]
+      2. Short one.
+    `;
+    const result = parseQuestions(text);
+    expect(result[0]).toMatchObject({
+      text: "This question spans multiple lines before its marks.",
+      maxMarks: 4,
+    });
+  });
 });

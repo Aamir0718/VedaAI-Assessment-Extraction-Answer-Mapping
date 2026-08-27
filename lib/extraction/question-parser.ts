@@ -5,6 +5,7 @@ import {
   SUBPART_PATTERN,
   TOP_LEVEL_PATTERN,
 } from "./question-patterns";
+import { extractMaxMarks } from "./question-marks";
 
 type LabelMatch = { number: string; rest: string };
 
@@ -62,5 +63,11 @@ export function parseQuestions(rawText: string): Question[] {
     }
   }
 
-  return questions;
+  // A question's marks annotation (e.g. "[5]") only appears once the full
+  // text — including any continuation lines — has been assembled, so this
+  // is a separate pass rather than done inline above.
+  return questions.map((q) => {
+    const { text, maxMarks } = extractMaxMarks(q.text);
+    return maxMarks === undefined ? q : { ...q, text, maxMarks };
+  });
 }

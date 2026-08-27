@@ -1,4 +1,5 @@
 import type { Answer, Question } from "@/types/assessment";
+import { DEFAULT_MAX_MARKS } from "@/lib/evaluation/total-marks";
 
 // Every prompt asks for minimal, structured JSON only — no prose, no
 // reasoning field — since output is schema-validated immediately after.
@@ -6,7 +7,9 @@ import type { Answer, Question } from "@/types/assessment";
 export const QUESTION_EXTRACTION_PROMPT = `You are reading a printed exam question paper.
 Extract every question and labelled sub-part (e.g. "11(a)" and "11(b)" are
 two separate entries) in the exact order they are printed, preserving the
-original numbering exactly as written.
+original numbering exactly as written. If a mark/point value is printed
+next to a question (e.g. "[5]", "(10 marks)", "[2M]"), report it as
+maxMarks and do not include the annotation itself in "text".
 Return ONLY a JSON array, each item: { "number": string, "text": string, "maxMarks"?: number }.
 No markdown, no commentary, no extra fields.`;
 
@@ -51,7 +54,7 @@ export function evaluationPrompt(pairs: { question: Question; answer: Answer }[]
   const items = pairs.map((p) => ({
     questionId: p.question.id,
     questionText: p.question.text,
-    maxMarks: p.question.maxMarks ?? 10,
+    maxMarks: p.question.maxMarks ?? DEFAULT_MAX_MARKS,
     answerText: p.answer.text,
   }));
 

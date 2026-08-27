@@ -10,6 +10,7 @@ import { AnswerSheetViewer } from "@/components/viewer/AnswerSheetViewer";
 import { ViewerEmptyState } from "@/components/viewer/ViewerEmptyState";
 import { ResultsTabs } from "@/components/assessment/ResultsTabs";
 import { GradeButton } from "@/components/assessment/GradeButton";
+import { TotalMarksBadge } from "@/components/assessment/TotalMarksBadge";
 import { EmptyResultsState } from "@/components/assessment/EmptyResultsState";
 import { NoResultsState } from "@/components/assessment/NoResultsState";
 
@@ -54,6 +55,7 @@ export default function AssessmentPage() {
             </p>
             <GradeButton questions={questions} answers={answers} mappings={mappings} graded={evaluations.length > 0} />
           </div>
+          <TotalMarksBadge questions={questions} evaluations={evaluations} />
           {answers.length === 0 && (
             <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
               No answers were detected on the uploaded answer sheet — every question is shown as unanswered.

@@ -653,3 +653,60 @@ wanted better typography and more interactivity.
 
 **Verification:** `npm run typecheck && npm run lint && npm run test &&
 npm run build` all clean, 71 tests unaffected (UI-only change set).
+
+## Feature addition — whole-paper total marks
+
+User's ask: analyze the question paper's own marks pattern and give a
+total score across the whole assessment, not just per-question marks.
+
+Closed a real gap this surfaced: `evaluationPrompt` was already defaulting
+every question to 10 max marks whenever `Question.maxMarks` was unset —
+which was *always*, since nothing ever actually populated it from the
+paper's own printed marks (e.g. "[5]", "(10 marks)"). A "total" computed
+from that would have been meaningless for any real exam with a varied
+marks scheme.
+
+- `lib/extraction/question-marks.ts`: `extractMaxMarks()` — a deterministic
+  regex for a trailing `[5]` / `(5 marks)` / `[3M]` annotation. Requires
+  the bracket/paren content to start with a digit, so a genuine
+  parenthetical like "(with an example)" is never mistaken for marks.
+  Applied as a post-process pass in `question-parser.ts` once each
+  question's full text (including continuation lines) is assembled —
+  doing it inline per-line wouldn't see marks printed after a multi-line
+  question.
+- `lib/ai/prompts.ts`: tightened `QUESTION_EXTRACTION_PROMPT`'s wording to
+  explicitly ask the AI-fallback path to detect the same marks pattern,
+  for parity with the deterministic path. Also replaced the
+  `evaluationPrompt`'s hardcoded default-10 with a shared
+  `DEFAULT_MAX_MARKS` constant (single source of truth with the total
+  computation below, rather than two magic 10s that could drift apart).
+- `lib/evaluation/total-marks.ts`: `computeTotalMarks()` — sums `earned`
+  across all evaluations and `possible` across *all* questions, not just
+  graded ones. An unanswered/ungraded question contributes 0 earned but
+  still adds its max marks to `possible`, matching how a real exam total
+  works (an unanswered 5-mark question doesn't shrink the paper to 95
+  marks, it's a 0/5 within a 100-mark paper).
+- `components/assessment/TotalMarksBadge.tsx`: a prominent gradient banner
+  above the question list, colored by percentage (same green/amber/red
+  bands as `StatusPill`). Renders nothing until at least one evaluation
+  exists — consistent with grading being on-demand, never automatic.
+
+**Verification.** Real extraction confirmed first: re-ran the actual
+pipeline against a question paper with `[2]`/`(5 marks)`/`[3]`/`[3]`
+annotations — the parser recovered exactly `2, 5, 3, 3`, not a flat
+default. Grading itself hit the Gemini free-tier's 20-requests/day quota
+partway through this session's extensive testing (a real, expected limit,
+not a bug — and it exercised the error-handling path correctly: a friendly
+"AI grading failed" message, 502 status, nothing raw leaked). Rather than
+wait out the quota, verified the total-marks UI by mocking `/api/process`
+and `/api/evaluate` responses in Playwright (using the exact marks values
+the real extraction had just confirmed) — the badge rendered **9/13**
+exactly matching the hand-computed expectation (2/2 + 4/5 + 3/3 + the
+unanswered question's 0/3), with the unanswered question correctly
+excluded from grading yet still counted in the total's denominator.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test
+&& npm run build` all clean — **83 tests** (12 new: 6 for
+`extractMaxMarks`, 4 for `computeTotalMarks`, 2 integration cases in
+`question-parser.test.ts`). Largest new file: 26 lines
+(`TotalMarksBadge.tsx`).
