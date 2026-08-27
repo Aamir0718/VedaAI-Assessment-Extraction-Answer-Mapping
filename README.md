@@ -27,7 +27,7 @@ mapping-and-highlighting workflow.
 - [x] Handwriting transcription + bounding-box detection via Gemini
 - [x] Deterministic-first answer mapping with a confidence model, AI only
       for genuinely ambiguous cases, never a silent drop
-- [ ] Multi-page answer support with region-by-region navigation
+- [x] Multi-page answer support with region-by-region navigation
 - [ ] Click-a-question → jump-to-highlight results viewer
 - [ ] Optional async grading (marks + feedback)
 
