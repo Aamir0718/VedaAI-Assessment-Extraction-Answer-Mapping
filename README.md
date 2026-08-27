@@ -20,15 +20,15 @@ mapping-and-highlighting workflow.
 
 ## Features
 
-- [ ] Upload with file-type/size validation and clear previews
-- [ ] Real, stage-by-stage processing progress (no generic spinner)
+- [x] Upload with file-type/size validation and clear previews
+- [x] Real, stage-by-stage processing progress (no generic spinner)
 - [x] Deterministic question extraction (printed text), AI fallback for
       image-based/complex layouts
 - [x] Handwriting transcription + bounding-box detection via Gemini
 - [x] Deterministic-first answer mapping with a confidence model, AI only
       for genuinely ambiguous cases, never a silent drop
 - [x] Multi-page answer support with region-by-region navigation
-- [ ] Click-a-question → jump-to-highlight results viewer
+- [x] Click-a-question → jump-to-highlight results viewer
 - [ ] Optional async grading (marks + feedback)
 
 (Checklist fills in as milestones complete.)

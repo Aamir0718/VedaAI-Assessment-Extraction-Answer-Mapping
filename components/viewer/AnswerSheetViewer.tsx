@@ -1,6 +1,12 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import type { AnswerRegion } from "@/types/assessment";
-import { PdfViewer } from "./PdfViewer";
 import { ImageViewer } from "./ImageViewer";
+
+// pdfjs-dist's browser build only runs in a browser (canvas rendering) —
+// disabling SSR here avoids importing it on the server at all.
+const PdfViewer = dynamic(() => import("./PdfViewer").then((m) => m.PdfViewer), { ssr: false });
 
 type Props = { file: { url: string; mimeType: string }; regions: AnswerRegion[] };
 

@@ -1,6 +1,29 @@
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+
+/**
+ * pdfjs reports text as a flat run of items with no line breaks — joining
+ * them with a plain space would collapse an entire page into one line.
+ * Insert a newline whenever an item's baseline (transform[5]) jumps from
+ * the previous one, which is how pdfjs itself signals a new visual line.
+ */
+export function joinTextItems(items: (TextItem | TextMarkedContent)[]): string {
+  let text = "";
+  let lastY: number | null = null;
+
+  for (const item of items) {
+    if (!("str" in item)) continue;
+    const y = item.transform[5];
+    if (lastY !== null && Math.abs(y - lastY) > 1) text += "\n";
+    else if (text) text += " ";
+    text += item.str;
+    lastY = y;
+  }
+
+  return text.trim();
+}
 
 let workerConfigured = false;
 
@@ -31,8 +54,7 @@ export async function extractPdfPageText(buffer: Buffer): Promise<string[]> {
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    const text = content.items.map((item) => ("str" in item ? item.str : "")).join(" ");
-    pages.push(text.trim());
+    pages.push(joinTextItems(content.items));
   }
   return pages;
 }

@@ -259,3 +259,86 @@ screenshot, described above. Largest new file: 62 lines (`PdfViewer.tsx`).
 **Next:** Milestone 5 — Complete pipeline: streaming
 `process-assessment.ts` orchestrator, `POST /api/process`, wiring
 upload → processing → results end to end with client-side result state.
+
+## Milestone 5 — Complete pipeline (done)
+
+- `lib/processing/stages.ts`: the fixed six-stage sequence from the spec's
+  own example (`files-uploaded` → `reading-question-paper` →
+  `questions-extracted` → `reading-answer-sheet` → `mapping-answers` →
+  `preparing-results`), plus default labels so a not-yet-reached stage
+  still renders sensible text instead of nothing.
+- `lib/processing/process-assessment.ts`: the single `processAssessment()`
+  async generator — the one application-layer workflow the spec asks for.
+  Wraps the whole body in one try/catch so any failure becomes a
+  teacher-facing `{ type: "error" }` event (via `to-friendly-message.ts`)
+  instead of throwing past the boundary or leaking a raw stack/provider
+  error into the UI.
+- `app/api/process/route.ts`: the one processing endpoint. Reads
+  `multipart/form-data`, validates both files with the existing
+  `validateFile` (Milestone 2) *before* entering the pipeline, then pipes
+  `processAssessment()` into a `ReadableStream` of NDJSON lines
+  (`runtime = "nodejs"` — needs Buffer/pdfjs; `maxDuration = 60` for the
+  single request that covers the whole analysis pass).
+- `lib/processing/read-ndjson-stream.ts`: pure client-side async generator
+  parsing a streamed NDJSON response, chunk-boundary-safe (a JSON object
+  split across two network chunks is buffered until it parses). 4 unit
+  tests against a fabricated `ReadableStream`, no real server needed.
+- `lib/processing/use-process-assessment.ts`: the client hook driving
+  submit → stream → navigate, keeping `app/page.tsx` a thin view.
+- `lib/state/assessment-store.tsx`: a React Context holding the current
+  `AssessmentResult` (mirrored into `sessionStorage`, JSON-serializable
+  parts only — a blob URL can't survive a reload anyway) rather than
+  relying on server memory, which a stateless serverless deploy can't
+  guarantee stays around between the POST and a later page load.
+- `app/page.tsx`: upload form ⇄ processing view as two states of one page
+  (per the repo structure's single `app/page.tsx` — Upload and Processing
+  are the same route, Results is the separate `/assessment` route).
+  `components/upload/` (FileDropzone, FilePreviewCard) and
+  `components/processing/` (StageList, StageItem) stay functional-not-
+  final here; Milestone 6 does the Figma pass on top of this same wiring.
+- `app/assessment/page.tsx` + `components/assessment/` (QuestionList,
+  QuestionDetail, UnmatchedAnswers): a working 3-pane results view.
+  Selection is either a question or, deliberately, an *unmatched answer*
+  — the mandatory "never silently discard an unmatched answer" requirement
+  needs the unmapped ones to be visible and clickable too, not just
+  questions, so this shipped now rather than deferred to the polish pass.
+- `components/viewer/AnswerSheetViewer.tsx` now itself wraps `PdfViewer` in
+  `next/dynamic(..., { ssr: false })` (moved from the Milestone 4 scratch
+  page into the real component) so every consumer gets the SSR-safety for
+  free instead of having to remember it.
+- **Bug found by actually running the pipeline, not just reviewing it**:
+  built two synthetic PDF fixtures (a real multi-line question paper, a
+  blank answer sheet) and drove the full upload → stream → error flow
+  through a headless-Chromium Playwright script against the real dev
+  server and a real `/api/process` call. First run: the question parser
+  only found **1 of 4** questions. Root cause —
+  `lib/extraction/pdf-text.ts` joined every text item on a page with a
+  single space and no line breaks at all, so a multi-line PDF page
+  collapsed into one giant line before it ever reached the regex parser,
+  which is line-based. This is exactly the kind of bug unit tests with
+  single-line fixtures (Milestone 2's original tests) can't catch — every
+  existing test happened to use one line per page. Fixed by extracting a
+  `joinTextItems()` helper that inserts a newline whenever a text item's
+  baseline (`transform[5]`) jumps from the previous item's, which is how
+  pdfjs itself signals a new visual line; added both a direct unit test
+  for `joinTextItems` and a page-level regression test with two lines on
+  one page. Re-ran the same Playwright flow afterward: all 4 questions
+  extracted correctly, pipeline proceeded through every stage in order,
+  and — with no `GEMINI_API_KEY` configured yet — failed exactly where
+  expected (the always-AI answer-extraction step) with the friendly
+  message, never a stack trace. Screenshots matched the spec's own
+  progress-UI example (✓/✓/✓/●/○/○) almost verbatim. All temporary
+  fixtures/scripts/`--no-save` Playwright install removed afterward.
+
+**Verification:** `npm run typecheck && npm run lint && npm run test && npm run build`
+all clean (57 tests). Full manual end-to-end run via headless Chromium,
+described above — this is the milestone where "it typechecks" and "it
+actually works" were meaningfully different things, and only the second
+was accepted. Largest file: 75 lines (`app/assessment/page.tsx`).
+
+**Next:** Milestone 6 — UI: Figma-fidelity pass. Note: the Figma file
+requires interactive/authenticated access this environment doesn't have
+(fetching the URL doesn't expose the actual design specifics) — will
+build a clean, professional UI from the spec's textual layout description
+instead of pixel-matching, and say so plainly rather than claim fidelity
+that wasn't achievable.
