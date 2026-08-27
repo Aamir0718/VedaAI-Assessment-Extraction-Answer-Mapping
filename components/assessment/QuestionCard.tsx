@@ -7,11 +7,20 @@ type Props = {
   answer: Answer | null;
   mapping: AnswerMapping | null;
   evaluation: Evaluation | null;
+  skippedByChoice?: boolean;
   expanded: boolean;
   onToggle: () => void;
 };
 
-export function QuestionCard({ question, answer, mapping, evaluation, expanded, onToggle }: Props) {
+export function QuestionCard({
+  question,
+  answer,
+  mapping,
+  evaluation,
+  skippedByChoice,
+  expanded,
+  onToggle,
+}: Props) {
   return (
     <div
       className={`rounded-xl border bg-white transition-all duration-200 ${
@@ -27,7 +36,7 @@ export function QuestionCard({ question, answer, mapping, evaluation, expanded, 
           {question.number}
         </span>
         <span className={`flex-1 text-sm text-neutral-800 ${expanded ? "" : "line-clamp-2"}`}>{question.text}</span>
-        <StatusPill evaluation={evaluation} mapping={mapping} />
+        <StatusPill evaluation={evaluation} mapping={mapping} skippedByChoice={skippedByChoice} />
         <ChevronDown
           className={`mt-0.5 size-4 shrink-0 text-neutral-400 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
           aria-hidden
@@ -40,6 +49,10 @@ export function QuestionCard({ question, answer, mapping, evaluation, expanded, 
               <p className="text-xs font-medium text-neutral-400">Answer</p>
               {answer ? (
                 <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-700">{answer.text}</p>
+              ) : skippedByChoice ? (
+                <p className="mt-1 text-sm text-neutral-400">
+                  Not needed — this question offers a choice, and the alternative was answered instead.
+                </p>
               ) : (
                 <p className="mt-1 text-sm text-neutral-400">Not answered.</p>
               )}

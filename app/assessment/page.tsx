@@ -31,7 +31,7 @@ export default function AssessmentPage() {
     );
   }
 
-  const { questions, answers, mappings, evaluations = [] } = state.result;
+  const { questions, answers, mappings, evaluations = [], paperTotalMarks } = state.result;
   if (questions.length === 0) {
     return (
       <div className="flex flex-1 flex-col">
@@ -55,7 +55,7 @@ export default function AssessmentPage() {
             </p>
             <GradeButton questions={questions} answers={answers} mappings={mappings} graded={evaluations.length > 0} />
           </div>
-          <TotalMarksBadge questions={questions} evaluations={evaluations} />
+          <TotalMarksBadge questions={questions} evaluations={evaluations} paperTotalMarks={paperTotalMarks} />
           {answers.length === 0 && (
             <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
               No answers were detected on the uploaded answer sheet — every question is shown as unanswered.

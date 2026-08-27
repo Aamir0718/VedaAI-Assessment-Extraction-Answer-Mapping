@@ -8,11 +8,11 @@ vi.mock("@/lib/ai/gemini-analyzer", () => ({
 
 const { extractQuestions } = await import("@/lib/extraction/extract-questions");
 
-async function makePdfWithText(text: string): Promise<Buffer> {
+async function makePdfWithText(...lines: string[]): Promise<Buffer> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const page = doc.addPage([400, 600]);
-  page.drawText(text, { x: 50, y: 550, size: 12, font });
+  lines.forEach((line, i) => page.drawText(line, { x: 50, y: 550 - i * 20, size: 12, font }));
   return Buffer.from(await doc.save());
 }
 
@@ -25,10 +25,18 @@ describe("extractQuestions", () => {
     const buffer = await makePdfWithText("1. What is the capital of France?");
     const result = await extractQuestions({ buffer, mimeType: "application/pdf", name: "q.pdf" });
 
-    expect(result).toEqual([
+    expect(result.questions).toEqual([
       { id: "q-1", number: "1", text: "What is the capital of France?" },
     ]);
+    expect(result.paperTotalMarks).toBeUndefined();
     expect(extractQuestionsFromDocument).not.toHaveBeenCalled();
+  });
+
+  it("also picks up a printed 'Total Marks' header alongside the deterministic parse", async () => {
+    const buffer = await makePdfWithText("Total Marks: 50", "1. What is the capital of France?");
+    const result = await extractQuestions({ buffer, mimeType: "application/pdf", name: "q.pdf" });
+
+    expect(result.paperTotalMarks).toBe(50);
   });
 
   it("falls back to AI when the PDF has no recognizable question labels", async () => {
@@ -39,7 +47,7 @@ describe("extractQuestions", () => {
     const result = await extractQuestions({ buffer, mimeType: "application/pdf", name: "q.pdf" });
 
     expect(extractQuestionsFromDocument).toHaveBeenCalledTimes(1);
-    expect(result).toEqual([{ id: "q-1", number: "1", text: "Recovered by AI." }]);
+    expect(result.questions).toEqual([{ id: "q-1", number: "1", text: "Recovered by AI." }]);
   });
 
   it("falls back to AI directly for image-based question papers", async () => {
@@ -51,6 +59,6 @@ describe("extractQuestions", () => {
     });
 
     expect(extractQuestionsFromDocument).toHaveBeenCalledTimes(1);
-    expect(result).toEqual([{ id: "q-1", number: "1", text: "From image." }]);
+    expect(result.questions).toEqual([{ id: "q-1", number: "1", text: "From image." }]);
   });
 });

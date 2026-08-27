@@ -10,6 +10,17 @@ type Props = {
   onSelect: (id: string) => void;
 };
 
+/** True when this question's OR-choice partner was answered instead — skipping it was expected. */
+function isSkippedByChoice(question: Question, questions: Question[], mappings: AnswerMapping[]): boolean {
+  if (!question.choiceGroup) return false;
+  return questions.some(
+    (q) =>
+      q.id !== question.id &&
+      q.choiceGroup === question.choiceGroup &&
+      mappings.some((m) => m.questionId === q.id)
+  );
+}
+
 /** One card per question; clicking a card both expands it and drives the viewer's highlight. */
 export function QuestionAccordion({ questions, answers, mappings, evaluations, selectedId, onSelect }: Props) {
   return (
@@ -25,6 +36,7 @@ export function QuestionAccordion({ questions, answers, mappings, evaluations, s
             answer={answer}
             mapping={mapping}
             evaluation={evaluation}
+            skippedByChoice={!mapping && isSkippedByChoice(question, questions, mappings)}
             expanded={selectedId === question.id}
             onToggle={() => onSelect(question.id)}
           />

@@ -102,4 +102,38 @@ describe("parseQuestions", () => {
       maxMarks: 4,
     });
   });
+
+  it("links two questions separated by a standalone 'OR' line into the same choice group", () => {
+    const text = `
+      5(a) Explain Newton's first law. [5]
+      OR
+      5(b) Explain Newton's second law. [5]
+      6. An unrelated question.
+    `;
+    const result = parseQuestions(text);
+    const [a, b, six] = result;
+    expect(a.choiceGroup).toBeDefined();
+    expect(a.choiceGroup).toBe(b.choiceGroup);
+    expect(six.choiceGroup).toBeUndefined();
+  });
+
+  it("accepts dashed OR variants like '-- OR --'", () => {
+    const text = `
+      1. First option.
+      -- OR --
+      2. Second option.
+    `;
+    const result = parseQuestions(text);
+    expect(result[0].choiceGroup).toBe(result[1].choiceGroup);
+  });
+
+  it("does not treat 'or' inside a real sentence as a choice marker", () => {
+    const text = `
+      1. Explain the difference between speed or velocity.
+      2. Second question.
+    `;
+    const result = parseQuestions(text);
+    expect(result[0].choiceGroup).toBeUndefined();
+    expect(result[1].choiceGroup).toBeUndefined();
+  });
 });

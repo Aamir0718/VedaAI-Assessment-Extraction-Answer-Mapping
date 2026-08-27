@@ -1,5 +1,6 @@
 import type { Question } from "@/types/assessment";
 import {
+  OR_LINE_PATTERN,
   QUESTION_PREFIX,
   SUBPART_DOT_PATTERN,
   SUBPART_PATTERN,
@@ -40,15 +41,23 @@ function matchLabel(line: string): LabelMatch | null {
  * "11(a)", "11(b)") become independent questions rather than being merged
  * under "11". Lines before the first recognized label are ignored (title/
  * instructions); a line that doesn't start a new label is appended to the
- * text of whichever question is currently open.
+ * text of whichever question is currently open. A standalone "OR" line
+ * between two questions links them as alternatives (`choiceGroup`) — the
+ * paper only expects one of them to be answered.
  */
 export function parseQuestions(rawText: string): Question[] {
   const lines = rawText.split(/\r?\n/);
   const questions: Question[] = [];
   let current: Question | null = null;
+  let choicePartner: Question | null = null;
 
   for (const line of lines) {
     if (!line.trim()) continue;
+
+    if (OR_LINE_PATTERN.test(line) && current) {
+      choicePartner = current;
+      continue;
+    }
 
     const label = matchLabel(line);
     if (label) {
@@ -57,6 +66,11 @@ export function parseQuestions(rawText: string): Question[] {
         number: label.number,
         text: label.rest.trim(),
       };
+      if (choicePartner) {
+        current.choiceGroup = choicePartner.choiceGroup ?? choicePartner.id;
+        choicePartner.choiceGroup = current.choiceGroup;
+        choicePartner = null;
+      }
       questions.push(current);
     } else if (current) {
       current.text = `${current.text} ${line.trim()}`.trim();

@@ -21,7 +21,7 @@ export async function* processAssessment(files: {
     yield stageEvent("files-uploaded", "Files uploaded");
 
     yield stageEvent("reading-question-paper", "Reading question paper");
-    const questions = await extractQuestions(files.questionPaper);
+    const { questions, paperTotalMarks } = await extractQuestions(files.questionPaper);
     yield stageEvent("questions-extracted", describeCount(questions.length, "question"));
 
     yield stageEvent("reading-answer-sheet", "Reading answer sheet");
@@ -31,7 +31,7 @@ export async function* processAssessment(files: {
     const mappings = await mapAnswers(questions, answers, geminiAnalyzer);
 
     yield stageEvent("preparing-results", "Preparing results");
-    yield { type: "result", result: { questions, answers, mappings } };
+    yield { type: "result", result: { questions, answers, mappings, paperTotalMarks } };
   } catch (err) {
     // Full detail server-side only — the client only ever sees the friendly message.
     console.error("processAssessment failed:", err);

@@ -710,3 +710,59 @@ excluded from grading yet still counted in the total's denominator.
 `extractMaxMarks`, 4 for `computeTotalMarks`, 2 integration cases in
 `question-parser.test.ts`). Largest new file: 26 lines
 (`TotalMarksBadge.tsx`).
+
+## Feature refinement — choices and the paper's own stated total
+
+Immediate follow-up from the user: the total should also account for
+questions with a printed choice (e.g. "5(a) OR 5(b), attempt one") and use
+the paper's own stated total rather than always summing per-question
+marks.
+
+- `lib/extraction/paper-total-marks.ts`: `extractPaperTotalMarks()` —
+  deterministic regex for a "Total Marks: 100" / "Maximum Marks: 80"
+  header, searched only within the first ~400 characters of the extracted
+  text (headers are always near the top; this also avoids matching an
+  unrelated number that happens to sit near the words "total"/"marks"
+  somewhere deep in the questions). New `AssessmentResult.paperTotalMarks`
+  field carries it through when found; `computeTotalMarks()` treats it as
+  authoritative over any per-question sum when present.
+- Chose *not* to attempt general "answer any N of M questions" prose-
+  instruction parsing — real papers phrase this too inconsistently for
+  reliable regex, and reaching for an extra AI call just to parse
+  instructions would cut against "minimize LLM calls." Scoped instead to
+  the single most common, reliably deterministic real pattern: an explicit
+  `"5(a) OR 5(b)"` choice between two adjacent alternatives — the
+  `OR_LINE_PATTERN` in `question-patterns.ts` matches a standalone "OR"
+  line (optionally dashed: `-- OR --`) and nothing else, so a genuine
+  sentence containing the word "or" is never mistaken for a choice marker.
+  `question-parser.ts` links the two questions via a shared
+  `Question.choiceGroup` id when this fires.
+- `computeTotalMarks()` rewritten to group by `choiceGroup` before summing:
+  each group contributes its max marks to `possible` exactly once (not
+  once per alternative), and `earned` takes the *best* mark among whichever
+  group members were actually graded — protects against double-counting
+  if a student answers both sides of a choice they weren't supposed to.
+- UI: an unanswered question whose choice partner *was* answered no longer
+  shows the alarming "Unanswered" pill — `StatusPill` shows "Optional —
+  not needed" instead, and the expanded card explains why, via a new
+  `isSkippedByChoice()` check in `QuestionAccordion` (only true when the
+  question has a `choiceGroup` and a sibling in it was actually mapped).
+
+**Verification.** Real, non-mocked extraction against a fresh PDF fixture
+containing all three patterns together ("Total Marks: 100" header, a
+`5(a)`/`OR`/`5(b)` choice pair with `[10]` each, plus `[2]`/`(5 marks)` on
+two ordinary questions) — ran `extractQuestions` directly via `tsx`
+(bypassing the API route, since Gemini's free-tier daily quota was fully
+exhausted by this point in the session and a full `/api/process` call
+would have failed at the always-AI answer-extraction step regardless of
+anything being tested here). Recovered exactly: marks `2, 5, 10, 10`;
+`5(a)` and `5(b)` sharing one `choiceGroup`; `paperTotalMarks: 100`. All
+three new behaviors confirmed against real deterministic parsing, not
+just unit-test fixtures.
+
+**Verification (automated):** `npm run typecheck && npm run lint && npm run test
+&& npm run build` all clean — **95 tests** (12 new: 4 for
+`extractPaperTotalMarks`, 3 for choice-group parsing, 3 for
+`computeTotalMarks`'s choice-group/override handling, 2 wiring checks in
+`process-assessment.test.ts`/`extract-questions.test.ts`). Largest touched
+file: 87 lines (`question-parser.ts`).

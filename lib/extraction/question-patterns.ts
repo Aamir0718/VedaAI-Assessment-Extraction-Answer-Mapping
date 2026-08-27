@@ -13,3 +13,6 @@ export const TOP_LEVEL_PATTERN = /^\s*(\d{1,3})\s*[.)]\s+/;
 
 /** Optional leading "Q"/"Question" prefix, stripped before pattern matching. */
 export const QUESTION_PREFIX = /^\s*(?:Q(?:uestion)?\.?\s*)/i;
+
+/** A standalone "OR" line — printed between two alternative questions the student picks one of. */
+export const OR_LINE_PATTERN = /^\s*-{0,3}\s*or\s*-{0,3}\s*$/i;

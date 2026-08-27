@@ -3,6 +3,9 @@ import type { FileInput } from "@/lib/validation/file-validation";
 import { geminiAnalyzer } from "@/lib/ai/gemini-analyzer";
 import { extractPdfPageText } from "./pdf-text";
 import { parseQuestions } from "./question-parser";
+import { extractPaperTotalMarks } from "./paper-total-marks";
+
+export type QuestionExtractionResult = { questions: Question[]; paperTotalMarks?: number };
 
 /**
  * Deterministic parsing is tried first (and trusted whenever it finds at
@@ -10,13 +13,16 @@ import { parseQuestions } from "./question-parser";
  * question papers (no embedded PDF text) or a layout too complex for the
  * regex parser to recognize any question label at all.
  */
-export async function extractQuestions(doc: FileInput): Promise<Question[]> {
+export async function extractQuestions(doc: FileInput): Promise<QuestionExtractionResult> {
   if (doc.mimeType === "application/pdf") {
     const pages = await extractPdfPageText(doc.buffer);
-    const parsed = parseQuestions(pages.join("\n"));
-    if (parsed.length > 0) return parsed;
+    const rawText = pages.join("\n");
+    const questions = parseQuestions(rawText);
+    if (questions.length > 0) {
+      return { questions, paperTotalMarks: extractPaperTotalMarks(rawText) };
+    }
   }
 
   const extracted = await geminiAnalyzer.extractQuestionsFromDocument(doc);
-  return extracted.map((q, index) => ({ id: `q-${index + 1}`, ...q }));
+  return { questions: extracted.map((q, index) => ({ id: `q-${index + 1}`, ...q })) };
 }

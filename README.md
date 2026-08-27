@@ -32,7 +32,10 @@ mapping-and-highlighting workflow.
 - [x] Multi-page answer support with region-by-region navigation
 - [x] Click-a-question → jump-to-highlight results viewer
 - [x] Optional async grading (marks + feedback), plus a whole-paper total
-      score using each question's own printed marks allocation
+      score using each question's own printed marks allocation — honoring
+      the paper's own "Total Marks: 100" header when printed, and
+      "5(a) OR 5(b)"-style choice questions (only the attempted side
+      counts, never both)
 - [x] Graceful error states — invalid files, corrupt PDFs, AI failures, zero
       questions/answers found — never a raw stack trace in the UI
 
@@ -62,7 +65,9 @@ deterministic code.
 2. Extract questions (deterministic parser; AI fallback only if the
    document has no usable embedded text). The parser also picks up each
    question's own printed marks allocation (`[5]`, `(10 marks)`, `[2M]`)
-   where present, rather than assuming a flat default per question.
+   where present, a "Total Marks: 100" style header if the paper prints
+   one, and links `"5(a) OR 5(b)"`-style alternatives into a choice group
+   so only the attempted side ever counts toward the total.
 3. Extract answers — one Gemini call over the full answer sheet, returning
    transcribed text + normalized bounding boxes per region.
 4. Map answers to questions (explicit label → normalized label →

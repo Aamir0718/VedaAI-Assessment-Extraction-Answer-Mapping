@@ -8,6 +8,8 @@ export type Question = {
   number: string;
   text: string;
   maxMarks?: number;
+  /** Shared id for questions printed as alternatives ("5(a) OR 5(b)") — only one counts toward the total. */
+  choiceGroup?: string;
 };
 
 /** Normalized (0–1) bounding box on one answer-sheet page. */
@@ -55,4 +57,6 @@ export type AssessmentResult = {
   answers: Answer[];
   mappings: AnswerMapping[];
   evaluations?: Evaluation[];
+  /** A "Total Marks: 100" style header printed on the paper, if found — authoritative over summing questions. */
+  paperTotalMarks?: number;
 };
