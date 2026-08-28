@@ -6,6 +6,7 @@ import type { AnswerRegion } from "@/types/assessment";
 import { pagesForRegions, regionsByPage } from "@/lib/pdf/coordinates";
 import { PageCanvas } from "./PageCanvas";
 import { ViewerToolbar } from "./ViewerToolbar";
+import { useContainerWidth } from "./use-container-width";
 import "@/lib/pdf/pdf-worker-setup";
 
 type Props = { fileUrl: string; regions: AnswerRegion[] };
@@ -23,14 +24,16 @@ export function PdfViewer({ fileUrl, regions }: Props) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [regionIndex, setRegionIndex] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const { ref: containerRef, width: containerWidth } = useContainerWidth<HTMLDivElement>();
 
   const pages = useMemo(() => pagesForRegions(regions), [regions]);
   const byPage = useMemo(() => regionsByPage(regions), [regions]);
   const currentPage = pages[regionIndex] ?? 1;
   const currentRegions = byPage.get(currentPage) ?? [];
+  const renderWidth = containerWidth ? Math.min(BASE_WIDTH * zoom, containerWidth) : BASE_WIDTH * zoom;
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div ref={containerRef} className="flex w-full flex-col items-center gap-3">
       <ViewerToolbar
         zoom={zoom}
         onZoomIn={() => setZoom((z) => Math.min(MAX_ZOOM, z + ZOOM_STEP))}
@@ -47,7 +50,7 @@ export function PdfViewer({ fileUrl, regions }: Props) {
         onLoadSuccess={(doc) => setNumPages(doc.numPages)}
         loading={<p className="p-8 text-sm text-neutral-400">Loading answer sheet…</p>}
       >
-        <PageCanvas pageNumber={currentPage} regions={currentRegions} width={BASE_WIDTH * zoom} />
+        <PageCanvas pageNumber={currentPage} regions={currentRegions} width={renderWidth} />
       </Document>
     </div>
   );
