@@ -1,22 +1,12 @@
 import type { NextRequest } from "next/server";
-import { validateFileInput, type FileInput } from "@/lib/validation/file-validation";
+import { validateFileInput } from "@/lib/validation/file-validation";
+import { readDocument } from "@/lib/validation/read-document";
 import { processAssessment } from "@/lib/processing/process-assessment";
 
 // Needs Buffer/pdfjs-dist — not Edge-compatible. Generous duration since a
 // single request covers the whole pipeline (one document analysis pass).
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-/** A document's pages arrive as one-or-more files under the same field name. */
-async function readDocument(form: FormData, field: string): Promise<FileInput | null> {
-  const files = form.getAll(field).filter((v): v is File => v instanceof File);
-  if (files.length === 0) return null;
-
-  const parts = await Promise.all(
-    files.map(async (file) => ({ buffer: Buffer.from(await file.arrayBuffer()), mimeType: file.type }))
-  );
-  return { parts, name: files[0].name };
-}
 
 export async function POST(request: NextRequest) {
   const form = await request.formData();

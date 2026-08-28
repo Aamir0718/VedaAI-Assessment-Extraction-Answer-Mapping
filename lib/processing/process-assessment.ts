@@ -3,6 +3,7 @@ import { extractQuestions } from "@/lib/extraction/extract-questions";
 import { extractAnswers } from "@/lib/extraction/extract-answers";
 import { mapAnswers } from "@/lib/mapping/map-answers";
 import { geminiAnalyzer } from "@/lib/ai/gemini-analyzer";
+import { describeAiError } from "@/lib/ai/types";
 import { describeCount, stageEvent, type ProcessEvent } from "./stages";
 import { toFriendlyMessage } from "./to-friendly-message";
 
@@ -34,7 +35,7 @@ export async function* processAssessment(files: {
     yield { type: "result", result: { questions, answers, mappings, paperTotalMarks } };
   } catch (err) {
     // Full detail server-side only — the client only ever sees the friendly message.
-    console.error("processAssessment failed:", err);
+    console.error("processAssessment failed:", describeAiError(err));
     yield { type: "error", message: toFriendlyMessage(err) };
   }
 }

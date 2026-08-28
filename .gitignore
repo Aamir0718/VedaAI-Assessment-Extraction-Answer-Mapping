@@ -13,6 +13,9 @@
 # testing
 /coverage
 
+# local Gemini response cache (see lib/ai/cache.ts)
+/.cache
+
 # next.js
 /.next/
 /out/

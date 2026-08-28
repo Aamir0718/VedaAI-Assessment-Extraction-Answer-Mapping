@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, type Part } from "@google/generative-ai";
 import type { ZodType } from "zod";
 import type { FileInput } from "@/lib/validation/file-validation";
+import { cacheKey, readCachedResponse, writeCachedResponse } from "./cache";
 import { AiOutputError } from "./types";
 
 const DEFAULT_MODEL = "gemini-3.6-flash";
@@ -31,16 +32,48 @@ function stripCodeFence(text: string): string {
   return (fenced ? fenced[1] : text).trim();
 }
 
+function parseAndValidate<T>(responseText: string, schema: ZodType<T>): T {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stripCodeFence(responseText));
+  } catch (err) {
+    throw new AiOutputError("Gemini returned non-JSON output.", err);
+  }
+
+  const validated = schema.safeParse(parsed);
+  if (!validated.success) {
+    throw new AiOutputError("Gemini output failed schema validation.", validated.error);
+  }
+  return validated.data;
+}
+
 /**
  * Single call site for every Gemini request: builds the parts array, sends
  * one generateContent call, and validates the JSON response against a Zod
  * schema before returning it. Never returns unvalidated model output.
+ *
+ * Checks an on-disk cache first, keyed by the exact prompt + file bytes —
+ * re-running the same document while iterating locally costs no quota
+ * after the first call. A cache entry that no longer validates (e.g. the
+ * schema changed since it was written) is treated as a miss, not an error.
  */
 export async function generateJson<T>(params: {
   prompt: string;
   files?: FileInput[];
   schema: ZodType<T>;
 }): Promise<T> {
+  const fileBuffers = (params.files ?? []).flatMap((f) => f.parts.map((p) => p.buffer));
+  const key = cacheKey(params.prompt, fileBuffers);
+
+  const cached = await readCachedResponse(key);
+  if (cached !== undefined) {
+    try {
+      return parseAndValidate(cached, params.schema);
+    } catch {
+      // Fall through and call Gemini for real.
+    }
+  }
+
   const parts: Part[] = [{ text: params.prompt }, ...(params.files ?? []).flatMap(toParts)];
 
   let responseText: string;
@@ -51,16 +84,7 @@ export async function generateJson<T>(params: {
     throw new AiOutputError("Gemini request failed.", err);
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stripCodeFence(responseText));
-  } catch (err) {
-    throw new AiOutputError("Gemini returned non-JSON output.", err);
-  }
-
-  const validated = params.schema.safeParse(parsed);
-  if (!validated.success) {
-    throw new AiOutputError("Gemini output failed schema validation.", validated.error);
-  }
-  return validated.data;
+  const validated = parseAndValidate(responseText, params.schema);
+  await writeCachedResponse(key, responseText);
+  return validated;
 }

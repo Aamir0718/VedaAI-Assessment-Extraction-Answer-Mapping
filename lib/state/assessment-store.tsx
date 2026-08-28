@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { AssessmentResult, Evaluation } from "@/types/assessment";
 
 /** One URL per uploaded page — a single-entry array for a PDF or one image, several for multiple images. */
-type AnswerSheetFile = { urls: string[]; mimeType: string };
+export type AnswerSheetFile = { urls: string[]; mimeType: string };
 type StoredState = { result: AssessmentResult | null; answerSheet: AnswerSheetFile | null };
 
 const EMPTY_STATE: StoredState = { result: null, answerSheet: null };

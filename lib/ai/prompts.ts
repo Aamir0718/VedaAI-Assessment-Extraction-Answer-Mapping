@@ -71,12 +71,23 @@ export function evaluationPrompt(pairs: { question: Question; answer: Answer }[]
     questionId: p.question.id,
     questionText: p.question.text,
     maxMarks: p.question.maxMarks ?? DEFAULT_MAX_MARKS,
-    answerText: p.answer.text,
+    transcribedAnswer: p.answer.text,
   }));
 
-  return `You are grading student answers against their questions.
+  return `You are grading student answers against their questions, acting as a
+subject-matter expert examiner would.
 Pairs: ${JSON.stringify(items)}
-For each pair, give marks out of the given maxMarks and brief, specific feedback
-(1-2 sentences: what's correct, what's missing). Return ONLY a JSON array, each
-item: { "questionId": string, "marks": number, "maxMarks": number, "feedback": string }`;
+If the original answer-sheet document is attached as a file, treat it as the
+source of truth — re-read each answer's actual handwriting directly from it
+rather than trusting "transcribedAnswer" blindly, since a transcription can
+miss or misread words, diagrams, equations, or steps. If no document is
+attached, grade from "transcribedAnswer" alone.
+Award marks out of the given maxMarks by correctness and completeness against
+what the question actually asks: full marks only for a complete, correct
+answer; partial marks proportional to how much is correctly covered (a
+mostly-right but incomplete answer should not score 0); 0 for a blank,
+irrelevant, or entirely wrong answer. Marks must never exceed maxMarks. Give
+brief, specific feedback (1-2 sentences: what's correct, what's missing or
+wrong). Return ONLY a JSON array, each item: { "questionId": string,
+"marks": number, "maxMarks": number, "feedback": string }`;
 }

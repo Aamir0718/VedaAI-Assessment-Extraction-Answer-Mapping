@@ -53,7 +53,13 @@ export default function AssessmentPage() {
             <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
               Extracted questions ({questions.length})
             </p>
-            <GradeButton questions={questions} answers={answers} mappings={mappings} graded={evaluations.length > 0} />
+            <GradeButton
+              questions={questions}
+              answers={answers}
+              mappings={mappings}
+              answerSheet={state.answerSheet}
+              graded={evaluations.length > 0}
+            />
           </div>
           <TotalMarksBadge questions={questions} evaluations={evaluations} paperTotalMarks={paperTotalMarks} />
           {answers.length === 0 && (

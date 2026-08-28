@@ -9,6 +9,24 @@ export class AiOutputError extends Error {
   }
 }
 
+/**
+ * Server-log-only detail string, safe to console.error alongside an
+ * AiOutputError. `cause` is a plain constructor property here (not wired
+ * through Node's built-in Error.cause), so a bare `console.error(err)` can
+ * silently print just "AiOutputError: <message>" depending on how the
+ * surrounding logger serializes it — this pulls the real underlying reason
+ * (a Gemini SDK error, a Zod validation error, etc.) out explicitly so it
+ * always survives.
+ */
+export function describeAiError(err: unknown): string {
+  if (!(err instanceof AiOutputError) || err.cause === undefined) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const cause = err.cause;
+  const causeMessage = cause instanceof Error ? cause.message : JSON.stringify(cause);
+  return `${err.message} — caused by: ${causeMessage}`;
+}
+
 /** AI-provided subset of a Question — id/order are assigned by our code. */
 export type ExtractedQuestion = Omit<Question, "id">;
 
@@ -36,6 +54,14 @@ export interface DocumentAnalyzer {
     answers: Answer[],
     candidates: Question[]
   ): Promise<ResolvedMapping[]>;
-  /** Batched — all mapped question/answer pairs graded in one call. */
-  evaluate(pairs: { question: Question; answer: Answer }[]): Promise<Evaluation[]>;
+  /**
+   * Batched — all mapped question/answer pairs graded in one call. `doc`,
+   * when available, is the original answer-sheet file(s) — grading then
+   * re-examines the actual handwriting instead of trusting the transcribed
+   * text alone (transcription can miss or misread content).
+   */
+  evaluate(
+    pairs: { question: Question; answer: Answer }[],
+    doc?: FileInput
+  ): Promise<Evaluation[]>;
 }

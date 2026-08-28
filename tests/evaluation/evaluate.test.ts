@@ -18,8 +18,40 @@ describe("evaluateAssessment", () => {
     const result = await evaluateAssessment(questions, answers, mappings, { evaluate });
 
     expect(evaluate).toHaveBeenCalledTimes(1);
-    expect(evaluate).toHaveBeenCalledWith([{ question: questions[0], answer: answers[0] }]);
+    expect(evaluate).toHaveBeenCalledWith([{ question: questions[0], answer: answers[0] }], undefined);
     expect(result).toEqual([{ questionId: "q-1", marks: 8, maxMarks: 10, feedback: "Good." }]);
+  });
+
+  it("passes the original answer-sheet document through so grading can re-examine the handwriting", async () => {
+    const questions = [question("1")];
+    const answers = [answer("a-1", "Paris")];
+    const mappings = [
+      { answerId: "a-1", questionId: "q-1", confidence: 0.98, method: "explicit-label" as const },
+    ];
+    const doc = { parts: [{ buffer: Buffer.from("x"), mimeType: "application/pdf" }], name: "sheet.pdf" };
+    const evaluate = vi.fn().mockResolvedValue([
+      { questionId: "q-1", marks: 8, maxMarks: 10, feedback: "Good." },
+    ]);
+
+    await evaluateAssessment(questions, answers, mappings, { evaluate }, doc);
+
+    expect(evaluate).toHaveBeenCalledWith([{ question: questions[0], answer: answers[0] }], doc);
+  });
+
+  it("never trusts the model's echoed marks/maxMarks over the question's own authoritative max", async () => {
+    const questions = [{ ...question("1"), maxMarks: 5 }];
+    const answers = [answer("a-1", "Paris")];
+    const mappings = [
+      { answerId: "a-1", questionId: "q-1", confidence: 0.98, method: "explicit-label" as const },
+    ];
+    // Model over-scores (12 > 5) and echoes a different maxMarks than printed.
+    const evaluate = vi.fn().mockResolvedValue([
+      { questionId: "q-1", marks: 12, maxMarks: 10, feedback: "Great." },
+    ]);
+
+    const result = await evaluateAssessment(questions, answers, mappings, { evaluate });
+
+    expect(result).toEqual([{ questionId: "q-1", marks: 5, maxMarks: 5, feedback: "Great." }]);
   });
 
   it("never calls the AI when there is nothing gradable", async () => {

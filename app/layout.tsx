@@ -24,7 +24,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${sora.variable} ${jakarta.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+      {/* suppressHydrationWarning: browser extensions (ColorZilla etc.) inject
+          attributes like cz-shortcut-listen onto <body> before React hydrates
+          -- a harmless mismatch, not an app bug. This only skips warnings for
+          body's own attributes, not for children. */}
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AssessmentProvider>{children}</AssessmentProvider>
       </body>
     </html>

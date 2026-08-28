@@ -44,11 +44,12 @@ export const geminiAnalyzer: DocumentAnalyzer = {
     });
   },
 
-  async evaluate(pairs: { question: Question; answer: Answer }[]) {
+  async evaluate(pairs: { question: Question; answer: Answer }[], doc?: FileInput) {
     if (pairs.length === 0) return [];
     return generateJson({
       prompt: evaluationPrompt(pairs),
       schema: evaluationsSchema,
+      files: doc ? [doc] : undefined,
     });
   },
 };
