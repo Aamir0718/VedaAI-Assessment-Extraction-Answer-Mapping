@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./design-tokens.css";
 
 :root {
   --background: #ffffff;
@@ -8,9 +9,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Body copy: Plus Jakarta Sans. Headings/emphasis: Sora (`font-display`). */
+  /* Body copy: Plus Jakarta Sans. Headings/emphasis: Source Serif 4 (`font-display`). */
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-serif), ui-serif, Georgia, serif;
 }
 
 /* This UI is designed light-only (matching the product's visual design) —

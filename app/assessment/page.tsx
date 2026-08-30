@@ -47,10 +47,10 @@ export default function AssessmentPage() {
     <div className="flex flex-1 flex-col">
       <AppHeader />
       <ResultsTabs active={mobileTab} onChange={setMobileTab} />
-      <main className="animate-fade-up grid flex-1 md:grid-cols-[420px_1fr] md:divide-x">
+      <main className="animate-fade-up grid flex-1 min-h-0 md:grid-cols-[420px_1fr] md:divide-x md:divide-border-subtle">
         <div className={`overflow-auto p-4 ${mobileTab === "sheet" ? "hidden md:block" : ""}`}>
           <div className="mb-3 flex items-center justify-between">
-            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
               Extracted questions ({questions.length})
             </p>
             <GradeButton
@@ -63,7 +63,7 @@ export default function AssessmentPage() {
           </div>
           <TotalMarksBadge questions={questions} evaluations={evaluations} paperTotalMarks={paperTotalMarks} />
           {answers.length === 0 && (
-            <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <p className="mb-3 rounded-control bg-warning-100 px-3 py-2 text-xs text-warning-600">
               No answers were detected on the uploaded answer sheet — every question is shown as unanswered.
             </p>
           )}
@@ -82,7 +82,7 @@ export default function AssessmentPage() {
             onSelect={(id) => setSelection({ kind: "answer", id })}
           />
         </div>
-        <div className={`overflow-auto bg-neutral-50 p-4 ${mobileTab === "questions" ? "hidden md:block" : ""}`}>
+        <div className={`overflow-auto bg-surface-muted p-4 ${mobileTab === "questions" ? "hidden md:block" : ""}`}>
           {state.answerSheet && answer ? (
             <AnswerSheetViewer file={state.answerSheet} regions={answer.regions} />
           ) : (

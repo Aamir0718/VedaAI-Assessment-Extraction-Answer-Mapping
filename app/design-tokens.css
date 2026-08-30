@@ -1,0 +1,54 @@
+/*
+ * Design tokens — the single source of truth for color/radius across the app.
+ * Static literals, registered as Tailwind v4 theme keys, so `bg-brand-600`,
+ * `text-ink-500`, `rounded-card`, etc. are generated automatically. Typography
+ * is wired separately, through `@theme inline` in globals.css + next/font in
+ * app/layout.tsx, since font values are runtime CSS vars, not literals.
+ *
+ * Spacing deliberately has no token scale here — Tailwind's default 4px-based
+ * spacing (including fractional steps like `p-3.5`, `gap-2.5`) already lands
+ * on every value the reference design uses, so a parallel scale would only
+ * duplicate it.
+ */
+@theme {
+  /* Surfaces */
+  --color-bg: #fafaf9;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f6f4;
+
+  /* Borders */
+  --color-border: #e8e6e3;
+  --color-border-subtle: #eeece9;
+
+  /* Ink (text/icons), light to dark */
+  --color-ink-100: #f5f4f2;
+  --color-ink-400: #a8a29e;
+  --color-ink-500: #78716c;
+  --color-ink-700: #57534e;
+  --color-ink-800: #292524;
+  --color-ink-900: #1c1917;
+
+  /* Brand (orange) */
+  --color-brand-50: #fef3ea;
+  --color-brand-100: #fde3da;
+  --color-brand-300: #f0b384;
+  --color-brand-500: #f0913f;
+  --color-brand-600: #e8672a;
+
+  /* Status */
+  --color-success-100: #d1fae5;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-warning-100: #fef3c7;
+  --color-warning-600: #b45309;
+  --color-danger-100: #fee2e2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+
+  /* Radius */
+  --radius-chip: 8px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 16px;
+  --radius-pill: 999px;
+}

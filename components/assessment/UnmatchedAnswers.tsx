@@ -16,7 +16,7 @@ export function UnmatchedAnswers({ answers, mappings, selectedAnswerId, onSelect
 
   return (
     <div className="mt-4">
-      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+      <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-ink-400">
         Unmatched answers ({unmatched.length})
       </p>
       <div className="space-y-2">
@@ -25,16 +25,16 @@ export function UnmatchedAnswers({ answers, mappings, selectedAnswerId, onSelect
             key={a.id}
             type="button"
             onClick={() => onSelect(a.id)}
-            className={`flex w-full items-start gap-2 rounded-xl border bg-white px-3 py-2.5 text-left text-sm transition-all duration-200 ${
+            className={`flex w-full items-start gap-2 rounded-card border bg-surface px-3 py-2.5 text-left text-sm transition-all duration-200 ${
               a.id === selectedAnswerId
-                ? "border-orange-300 shadow-md"
-                : "border-neutral-200 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-sm"
+                ? "border-brand-300 shadow-md"
+                : "border-red-200 hover:-translate-y-0.5 hover:border-red-300 hover:shadow-sm"
             }`}
           >
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-pill bg-danger-100 text-danger-500">
               <X className="size-3" aria-hidden />
             </span>
-            <span className="line-clamp-2 flex-1 text-neutral-700">{a.text}</span>
+            <span className="line-clamp-2 flex-1 text-ink-700">{a.text}</span>
           </button>
         ))}
       </div>

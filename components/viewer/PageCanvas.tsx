@@ -13,7 +13,7 @@ export function PageCanvas({ pageNumber, regions, width }: Props) {
   const [pageSize, setPageSize] = useState<PageSize | null>(null);
 
   return (
-    <div className="relative inline-block overflow-hidden rounded-lg border border-neutral-200 shadow-sm">
+    <div className="relative inline-block overflow-hidden rounded-control border border-border shadow-sm">
       <Page
         pageNumber={pageNumber}
         width={width}
