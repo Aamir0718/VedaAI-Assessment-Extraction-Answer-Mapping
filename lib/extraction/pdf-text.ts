@@ -1,3 +1,4 @@
+import "@/lib/pdf/node-polyfills";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 import path from "node:path";
