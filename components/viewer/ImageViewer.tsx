@@ -49,7 +49,7 @@ export function ImageViewer({ imageUrls, regions }: Props) {
         onNextRegion={() => setRegionIndex((i) => Math.min(pages.length - 1, i + 1))}
       />
       <div
-        className="relative inline-block overflow-hidden rounded-lg border border-neutral-200 shadow-sm"
+        className="relative inline-block overflow-hidden rounded-control border border-border shadow-sm"
         style={{ width }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- dynamic client-side blob URL */}

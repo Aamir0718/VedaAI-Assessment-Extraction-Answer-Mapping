@@ -104,24 +104,24 @@ export function FileDropzone({ noun, accept, files, onSelect }: Props) {
         role="button"
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
-        className={`group flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed px-4 py-7 text-center transition-all duration-200 active:scale-[0.98] ${
+        className={`group flex cursor-pointer flex-col items-center gap-2 rounded-card border-2 border-dashed px-4 py-7 text-center transition-all duration-200 active:scale-[0.98] ${
           isDragging
-            ? "scale-[1.02] border-orange-400 bg-orange-50 shadow-lg shadow-orange-100"
+            ? "scale-[1.02] border-brand-500 bg-brand-50 shadow-lg shadow-brand-100"
             : error
-              ? "border-red-200"
-              : "border-neutral-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/40 hover:shadow-md"
+              ? "border-danger-500"
+              : "border-border-subtle bg-surface hover:-translate-y-0.5 hover:border-brand-300 hover:bg-brand-50/40 hover:shadow-md"
         }`}
       >
-        <span className="flex size-10 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 transition-transform duration-200 group-hover:scale-110 group-hover:bg-orange-100 group-hover:text-orange-600">
+        <span className="flex size-10 items-center justify-center rounded-control bg-ink-100 text-ink-500 transition-transform duration-200 group-hover:scale-110 group-hover:bg-brand-100 group-hover:text-brand-600">
           <Upload className="size-5" aria-hidden />
         </span>
-        <p className="text-sm font-medium text-neutral-800">
-          Upload <span className="text-orange-600">{noun}</span>
+        <p className="text-sm font-medium text-ink-800">
+          Upload <span className="text-brand-600">{noun}</span>
         </p>
-        <p className="text-xs text-neutral-400">PDF, or multiple images · Max {DEFAULT_MAX_FILE_SIZE_MB}MB</p>
+        <p className="text-xs text-ink-400">PDF, or multiple images · Max {DEFAULT_MAX_FILE_SIZE_MB}MB</p>
         {hiddenInput}
       </div>
-      {error && <p className="mt-1.5 px-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 px-1 text-xs text-danger-600">{error}</p>}
     </div>
   );
 }

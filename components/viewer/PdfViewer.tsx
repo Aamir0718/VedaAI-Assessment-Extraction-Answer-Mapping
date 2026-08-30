@@ -48,7 +48,7 @@ export function PdfViewer({ fileUrl, regions }: Props) {
       <Document
         file={fileUrl}
         onLoadSuccess={(doc) => setNumPages(doc.numPages)}
-        loading={<p className="p-8 text-sm text-neutral-400">Loading answer sheet…</p>}
+        loading={<p className="p-8 text-sm text-ink-400">Loading answer sheet…</p>}
       >
         <PageCanvas pageNumber={currentPage} regions={currentRegions} width={renderWidth} />
       </Document>
