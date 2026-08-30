@@ -145,6 +145,27 @@ alternatives against each other — the real-paper bug that motivated this
 `context.md`, including the second, subtler bug found only after fixing
 the first one.
 
+### UI shell — what's real vs. decorative
+
+The brief asked for one webpage/workflow (upload → extract → map →
+highlight → optionally grade), not a multi-tenant classroom platform — but
+product experience is explicitly one of the evaluation points, and a bare
+single-screen tool reads as less finished than a real product, even when
+the underlying functionality is identical. The resolution: the sidebar
+(`components/layout/Sidebar.tsx`) gives the app a complete-feeling shell —
+Home / My Classroom / Assignments / **Exams** / My Library — but only
+**Exams** is real. The other four are static, unclickable labels with no
+route, no handler, and no backing data behind them; they exist purely to
+make the shell read as a finished product rather than one isolated screen,
+not to imply this app does classroom management, assignments, or a library
+it was never asked to build and doesn't have. Same reasoning kept the
+sidebar's user/school identity, notifications, and an "AI Teaching
+Assistant" button that appeared in the visual reference **out** entirely —
+inventing a fake logged-in teacher or fake notifications would have crossed
+from "make the shell feel complete" into "imply features/data that don't
+exist," which is a real product-honesty line worth holding even under a
+"design counts" evaluation criterion.
+
 ### Architecture
 
 A lean Next.js monolith on purpose — no database, auth, or queues, because
