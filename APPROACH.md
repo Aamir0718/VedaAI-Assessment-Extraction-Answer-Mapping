@@ -12,6 +12,37 @@ the app, not just by reading the code).
 
 ## Approach
 
+### Deterministic code vs. the LLM — where each is actually used
+
+The default assumption going in was **"write code first; reach for the
+LLM only where code genuinely can't do the job."** In practice that means
+most of what the app does — question parsing, marks/total detection,
+choice-group linking, three of the four answer-mapping strategies,
+coordinate math, confidence scoring, every status label in the UI,
+validation, and error handling — is ordinary deterministic TypeScript with
+no model call involved at all. The LLM (Gemini) is used narrowly, only
+where there's genuinely no deterministic alternative:
+
+| Task | How it's actually done |
+|---|---|
+| Parse the question paper (numbering, text, marks, choice groups) | **Deterministic** — regex parser (`lib/extraction/question-parser.ts`); this is the path taken for any paper with a real text layer, i.e. most of them |
+| …when the paper has no text layer (scanned) or the parser found nothing | LLM fallback only — same detection logic, re-implemented in the prompt for parity |
+| Transcribe handwritten answers + locate them on the page | **LLM, always** — there's no deterministic way to read handwriting; this is the one step AI is doing genuinely load-bearing work |
+| Map an answer to its question — explicit label / normalized label / positional order | **Deterministic** — 3 of the 4 mapping strategies, checked first, and enough on their own for the large majority of real answer sheets |
+| Map an answer to its question — whatever's left after the above | LLM, batched — one call for the remainder, never per-answer |
+| Convert a bounding box to on-screen pixels for highlighting | **Deterministic** — one pure function, unit-tested, zero model involvement |
+| Decide Unanswered / Needs review / Unmatched / a mark | **Deterministic** — derived from mapping method + confidence, not asked of the model |
+| Grade an answer (marks + feedback) | LLM, batched, **optional** — only runs if the teacher explicitly clicks "Grade with AI" |
+| File validation, error messages, streaming progress, all UI state | **Deterministic**, throughout |
+
+So of the five things the app visibly does — read the question paper, read
+the answer sheet, map answers to questions, highlight them, and grade —
+the LLM is the *only* way to do exactly two (reading handwriting, and
+grading), and even the mapping/parsing steps it touches at all only see it
+as a last resort after three separate deterministic passes have already
+had a chance to resolve things correctly. The full reasoning behind each
+individual piece is in the sections below.
+
 ### Pipeline
 
 ```
